@@ -1,0 +1,13 @@
+// Copy this file to LocalConfig.mc (gitignored) and fill in the 20 bytes
+// you captured for YOUR OWN board -- see README.md ("Capturing your
+// board's unlock bytes") for the full step-by-step procedure.
+//
+// This value is not a general secret or algorithm -- it's specific to one
+// board (and possibly tied to the FutureMotion account it was captured
+// from). See PROTOCOL.md for why it can't be derived or shared.
+module OnewheelProfile {
+    const UNLOCK_RESPONSE = [
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    ]b;
+}

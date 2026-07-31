@@ -1,0 +1,33 @@
+# Build output
+garmin-app/bin/
+
+# Signing key -- never share a developer key
+garmin-app/developer_key.pem
+garmin-app/developer_key.der
+
+# Board-specific unlock secret -- see source/LocalConfig.mc.example
+garmin-app/source/LocalConfig.mc
+
+# FutureMotion's decompiled app + raw APK -- their copyright, not ours to
+# distribute. Kept locally for reference only.
+tools/apk_analysis/
+
+# Downloaded third-party tooling -- not ours to redistribute, see README
+# for how to fetch your own copy.
+tools/ciq-sdk-manager/
+
+# Python spike tooling: venv, caches, and captured personal Bluetooth/phone
+# data (HCI snoop logs, adb bugreports) -- large and sensitive, never commit.
+tools/ow_spike/.venv/
+tools/ow_spike/__pycache__/
+tools/ow_spike/*.log
+tools/ow_spike/bugreport.zip
+
+# Loose design-in-progress assets not used by the app itself
+/FFicon.png
+/FFicon.svg
+/FFicon.svg.*.svg
+/FFicon_color.svg
+/OWicon.webp
+
+.DS_Store
