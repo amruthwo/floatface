@@ -101,7 +101,7 @@ class OnewheelView extends WatchUi.View {
         y += dc.getFontHeight(Graphics.FONT_NUMBER_MEDIUM) + 4;
 
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, y, Graphics.FONT_XTINY, "raw trip/life: " + valueOrDash(_connection.tripOdometer) + " / " + valueOrDash(_connection.lifeOdometer), Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(width / 2, y, Graphics.FONT_XTINY, "raw " + valueOrDash(_connection.tripOdometer) + "/" + valueOrDash(_connection.lifeOdometer), Graphics.TEXT_JUSTIFY_CENTER);
         y += lineHeight;
 
         if (_connection.halfwayWarningActive) {

@@ -19,12 +19,13 @@ for what's confirmed vs. assumed.
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/ride-page.png" width="150" alt="Ride page: speed and battery" />
-  <img src="docs/screenshots/stats-page.png" width="150" alt="Stats page: trip and range" />
-  <img src="docs/screenshots/board-page.png" width="150" alt="Board page: mode, safety, temps" />
+  <img src="docs/screenshots/ride-page.jpg" width="150" alt="Ride page: speed and battery" />
+  <img src="docs/screenshots/stats-page.jpg" width="150" alt="Stats page: trip and range" />
+  <img src="docs/screenshots/board-page.jpg" width="150" alt="Board page: mode, safety, temps" />
+  <img src="docs/screenshots/activity-summary.jpg" width="150" alt="Recorded activity summary in Garmin Connect" />
 </p>
 
-<p align="center"><i>Ride · Stats · Board — paged with the watch's Up/Down buttons</i></p>
+<p align="center"><i>Ride · Stats · Board (paged with the watch's Up/Down buttons) · the recorded activity afterward</i></p>
 
 ## Features
 
@@ -49,12 +50,14 @@ Early and personal. This is a from-scratch reverse-engineering project, not
 a polished product — expect rough edges, and see the "Not yet calibrated"
 list below and [PROTOCOL.md](PROTOCOL.md) for everything still uncertain.
 
+**Confirmed against real rides:**
+- Speed/trip distance (RPM-based, using GT's published 11.5" tire diameter)
+  came within 2% of GPS-measured distance on a real ride (1.77 mi estimated
+  vs. 1.74 mi GPS) — close enough to trust as an estimate.
+
 **Not yet calibrated / confirmed:**
-- Speed and trip distance are estimated from wheel RPM using GT's published
-  tire diameter (11.5"), not yet sanity-checked against GPS speed from a real
-  ride.
-- `safety_headroom`'s real meaning is unknown — it read "1" through an
-  entire normal ride, so whatever we originally guessed ("safety warning")
+- `safety_headroom`'s real meaning is unknown — it read "1" through two
+  entire normal rides, so whatever we originally guessed ("safety warning")
   is probably wrong. Shown as a raw number, not a label.
 - `riding_mode`'s name mapping (Bay/Roam/Flow/Highline/Elevated/Apex) is
   confirmed for GT; other models/firmware may differ.

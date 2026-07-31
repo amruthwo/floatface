@@ -283,20 +283,30 @@ Garmin's own `RecordSample` (the same sample our start/stop recording
 pattern is based on), which calls `Position.enableLocationEvents(LOCATION_CONTINUOUS, ...)`
 in `onStart()` and disables it in `onStop()`. `ActivityRecording.createSession()`
 records whatever position data the system is currently receiving -- it does
-not turn the GPS receiver on by itself. Fixed; not yet re-verified with
-another real ride.
+not turn the GPS receiver on by itself. Confirmed fixed: a real ride after
+this change recorded full GPS distance/speed/map data in Garmin Connect.
+
+## Wheel diameter (11.5") confirmed close via GPS cross-check
+
+Same ride that confirmed GPS recording: our RPM-integrated trip distance
+(`distanceMilesThisRide`, built on the 11.5" GT tire diameter assumption)
+came out to **1.77 mi**, vs. **1.74 mi** measured by the watch's own GPS for
+the same ride -- under 2% off. Good enough that the 11.5" tire spec was the
+right number to use; not applying a correction based on one data point
+(within normal GPS/tire-pressure noise), but this is real validation rather
+than just a plausible-sounding assumption now.
 
 ## Still open / not investigated
 
 - Whether the external BLE sniffer dongle approach actually works in practice
   (not yet tested).
 - `safety_headroom`'s real meaning -- now have direct evidence against the
-  "boolean warning flag" theory (see puzzle above), true meaning still unknown.
+  "boolean warning flag" theory from two separate real rides (stayed `1`
+  throughout both), true meaning still unknown.
 - `custom_shaping`'s encoding on GT, and "Custom Shaping" mode's `riding_mode` number.
-- Wheel diameter (11.5", used for RPM->mph) not yet sanity-checked against GPS
-  speed -- now that GPS recording is fixed, next real ride should let us
-  compare our estimated mph against the recorded GPS speed.
-- GPS fix not yet re-verified with a real ride since fixing
+- Motor temps ran hotter on the second real ride (111°F/118°F vs. ~102°F max
+  on the first) -- not yet enough data to know if that's normal variation
+  or worth tracking as a trend.
   `enableLocationEvents`/`Positioning` permission.
 - The old pre-GT MD5 password's native derivation (irrelevant to GT, not
   pursued).
