@@ -11,6 +11,13 @@ import Toybox.WatchUi;
 
 const PAGE_COUNT = 3;
 
+// If the board isn't found within this long, it's most likely because a
+// phone (with the official Onewheel app) already holds the board's one
+// BLE connection slot -- these boards stop advertising entirely once
+// connected to anything. See PROTOCOL.md / README.md for why the watch
+// and phone can't both be connected at the same time.
+const SCAN_TIMEOUT_MS = 30000;
+
 // GT's tire is 11.5" x 6.5"-6.5" per Future Motion / TrailWheel specs --
 // diameter, not circumference. This hasn't been sanity-checked against GPS
 // speed yet, so treat displayed mph as an estimate until that's done.
@@ -68,6 +75,7 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
     private var _uartWriteChar as Characteristic?;
     private var _pendingCccdChars as Array<Characteristic> = [];
     private var _keepaliveTimer as Timer.Timer?;
+    private var _scanTimeoutTimer as Timer.Timer?;
 
     private var _session as Session?;
     private var _speedField as Field?;
@@ -88,6 +96,22 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
         status = "Scanning...";
         WatchUi.requestUpdate();
         BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_SCANNING);
+
+        if (_scanTimeoutTimer != null) {
+            _scanTimeoutTimer.stop();
+        }
+        _scanTimeoutTimer = new Timer.Timer();
+        _scanTimeoutTimer.start(method(:onScanTimeout), SCAN_TIMEOUT_MS, false);
+    }
+
+    // Only updates the message if we're still scanning by then -- if a
+    // board was found in the meantime, status has already moved on and
+    // this is a no-op.
+    public function onScanTimeout() as Void {
+        if (status.equals("Scanning...")) {
+            status = "Not found -- check phone BT is off";
+            WatchUi.requestUpdate();
+        }
     }
 
     // Page navigation (hooked up to the physical Up/Down buttons)
@@ -190,6 +214,10 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
 
             if (isOnewheel || containsServiceUuid(result)) {
                 BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF);
+                if (_scanTimeoutTimer != null) {
+                    _scanTimeoutTimer.stop();
+                    _scanTimeoutTimer = null;
+                }
                 status = "Connecting...";
                 WatchUi.requestUpdate();
                 _device = BluetoothLowEnergy.pairDevice(result);
@@ -359,6 +387,10 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
         if (_keepaliveTimer != null) {
             _keepaliveTimer.stop();
             _keepaliveTimer = null;
+        }
+        if (_scanTimeoutTimer != null) {
+            _scanTimeoutTimer.stop();
+            _scanTimeoutTimer = null;
         }
         _device = null;
         _uartWriteChar = null;

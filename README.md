@@ -80,6 +80,30 @@ Practically, that means **you need to capture your own board's unlock
 bytes once**, the same way we did. It's a one-time setup step, not
 something the app can do for you automatically.
 
+## The watch and the official Onewheel app can't both be connected at once
+
+This isn't a bug in FLoatface — it's how the board's Bluetooth firmware
+works. Onewheel boards only support **one BLE connection at a time**. We
+confirmed this directly: with a phone connected via the official app, the
+board stops advertising entirely, so nothing else (our watch, a laptop, a
+different phone) can even see it, let alone connect. Whoever connects first
+holds the only slot until they disconnect.
+
+There's no way to work around this from the outside — a BLE peripheral's
+connection limit is set by its own firmware, not something a client (phone
+or watch) can override. Two theoretical fixes exist, and neither is a good
+idea: Connect IQ has no API for a watch to act as a BLE *peripheral*, so it
+can't pretend to be the board and relay data to the phone; and doing the
+reverse (a custom Android app on the phone relaying to the watch) would
+mean writing and maintaining a whole separate phone app, reintroducing
+exactly the phone dependency this project exists to avoid.
+
+**In practice**: use one or the other. Turn off your phone's Bluetooth (or
+background/force-quit the Onewheel app) before opening FLoatface, and
+vice versa when you need something only the official app currently
+provides. If FLoatface can't find your board within 30 seconds, it'll show
+a hint suggesting this is probably why.
+
 ## Capturing your board's unlock bytes
 
 You need this before the app will do anything beyond scan for your board.
