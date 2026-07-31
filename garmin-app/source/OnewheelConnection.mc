@@ -35,6 +35,11 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
 
     var status as String = "Scanning...";
     var lastError as String?;
+    // Set when a scan runs past SCAN_TIMEOUT_MS without finding the board.
+    // The status line stays short (the very top of a round display has
+    // almost no width to work with); the full explanation is shown lower
+    // down on the Ride page instead, where there's actually room for it.
+    var scanTimedOut as Boolean = false;
 
     var batteryLevel as Number?;
     var speedRpm as Number?;
@@ -94,6 +99,7 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
 
     public function startScan() as Void {
         status = "Scanning...";
+        scanTimedOut = false;
         WatchUi.requestUpdate();
         BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_SCANNING);
 
@@ -104,12 +110,12 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
         _scanTimeoutTimer.start(method(:onScanTimeout), SCAN_TIMEOUT_MS, false);
     }
 
-    // Only updates the message if we're still scanning by then -- if a
-    // board was found in the meantime, status has already moved on and
-    // this is a no-op.
+    // Only fires if we're still scanning by then -- if a board was found in
+    // the meantime, this is a no-op (the timer gets stopped on success, but
+    // there's a small window where both could race).
     public function onScanTimeout() as Void {
         if (status.equals("Scanning...")) {
-            status = "Not found -- check phone BT is off";
+            scanTimedOut = true;
             WatchUi.requestUpdate();
         }
     }

@@ -1,5 +1,6 @@
 import Toybox.Graphics;
 import Toybox.Lang;
+import Toybox.Math;
 import Toybox.System;
 import Toybox.WatchUi;
 
@@ -24,17 +25,19 @@ class OnewheelView extends WatchUi.View {
 
         // Every element on every page is stacked using measured font heights
         // (not fixed pixel guesses) so nothing overflows the 260x260 round
-        // display, regardless of which fonts a given device substitutes.
+        // display vertically. Horizontally, drawFittedText() below measures
+        // actual text width against how much horizontal room exists at that
+        // Y position on a round display (which shrinks a lot away from
+        // vertical center) and wraps to a second line if needed, rather than
+        // us guessing at "short enough" strings by eye.
         var width = dc.getWidth();
         var y = 2;
 
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, y, Graphics.FONT_XTINY, _connection.status, Graphics.TEXT_JUSTIFY_CENTER);
-        y += dc.getFontHeight(Graphics.FONT_XTINY);
+        y += drawFittedText(dc, y, Graphics.FONT_XTINY, _connection.status);
 
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, y, Graphics.FONT_XTINY, currentTimeText(), Graphics.TEXT_JUSTIFY_CENTER);
-        y += dc.getFontHeight(Graphics.FONT_XTINY);
+        y += drawFittedText(dc, y, Graphics.FONT_XTINY, currentTimeText());
 
         if (_connection.currentPage == 0) {
             drawRidePage(dc, width, y);
@@ -57,8 +60,7 @@ class OnewheelView extends WatchUi.View {
         dc.drawText(width / 2, y, Graphics.FONT_NUMBER_THAI_HOT, speedText, Graphics.TEXT_JUSTIFY_CENTER);
         y += dc.getFontHeight(Graphics.FONT_NUMBER_THAI_HOT);
 
-        dc.drawText(width / 2, y, Graphics.FONT_XTINY, "mph (est.)", Graphics.TEXT_JUSTIFY_CENTER);
-        y += dc.getFontHeight(Graphics.FONT_XTINY);
+        y += drawFittedText(dc, y, Graphics.FONT_XTINY, "mph (est.)");
 
         dc.setColor(batteryColor(_connection.batteryLevel), Graphics.COLOR_TRANSPARENT);
         var batteryText = _connection.batteryLevel == null ? "--" : _connection.batteryLevel.toString() + "%";
@@ -67,16 +69,22 @@ class OnewheelView extends WatchUi.View {
 
         if (_connection.halfwayWarningActive) {
             dc.setColor(Graphics.COLOR_ORANGE, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(width / 2, y, Graphics.FONT_XTINY, "Past halfway -- head back", Graphics.TEXT_JUSTIFY_CENTER);
-            y += dc.getFontHeight(Graphics.FONT_XTINY);
+            y += drawFittedText(dc, y, Graphics.FONT_XTINY, "Past halfway -- head back");
+        }
+
+        if (_connection.scanTimedOut) {
+            // Plenty of horizontal room here (unlike the top status line),
+            // so the full explanation fits instead of a cryptic short one.
+            dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
+            y += drawFittedText(dc, y, Graphics.FONT_XTINY, "Board not found -- check phone Bluetooth is off");
         }
 
         if (_connection.isRecording()) {
             dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(width / 2, y, Graphics.FONT_XTINY, "● Recording", Graphics.TEXT_JUSTIFY_CENTER);
+            drawFittedText(dc, y, Graphics.FONT_XTINY, "● Recording");
         } else {
             dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(width / 2, y, Graphics.FONT_XTINY, "Start/Stop to record", Graphics.TEXT_JUSTIFY_CENTER);
+            drawFittedText(dc, y, Graphics.FONT_XTINY, "Start/Stop to record");
         }
     }
 
@@ -86,45 +94,35 @@ class OnewheelView extends WatchUi.View {
     // calibrate them against GPS on a future ride -- see PROTOCOL.md.
     private function drawStatsPage(dc as Dc, width as Number, yStart as Number) as Void {
         var y = yStart;
-        var lineHeight = dc.getFontHeight(Graphics.FONT_XTINY);
 
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, y, Graphics.FONT_MEDIUM, "Trip (est.)", Graphics.TEXT_JUSTIFY_CENTER);
-        y += dc.getFontHeight(Graphics.FONT_MEDIUM);
+        y += drawFittedText(dc, y, Graphics.FONT_MEDIUM, "Trip (est.)");
         dc.drawText(width / 2, y, Graphics.FONT_NUMBER_MEDIUM, _connection.distanceMilesThisRide.format("%.2f") + " mi", Graphics.TEXT_JUSTIFY_CENTER);
         y += dc.getFontHeight(Graphics.FONT_NUMBER_MEDIUM) + 4;
 
-        dc.drawText(width / 2, y, Graphics.FONT_MEDIUM, "Range left (est.)", Graphics.TEXT_JUSTIFY_CENTER);
-        y += dc.getFontHeight(Graphics.FONT_MEDIUM);
+        y += drawFittedText(dc, y, Graphics.FONT_MEDIUM, "Range left (est.)");
         var rangeText = _connection.estimatedRangeMiles == null ? "--" : _connection.estimatedRangeMiles.format("%.1f") + " mi";
         dc.drawText(width / 2, y, Graphics.FONT_NUMBER_MEDIUM, rangeText, Graphics.TEXT_JUSTIFY_CENTER);
         y += dc.getFontHeight(Graphics.FONT_NUMBER_MEDIUM) + 4;
 
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, y, Graphics.FONT_XTINY, "raw " + valueOrDash(_connection.tripOdometer) + "/" + valueOrDash(_connection.lifeOdometer), Graphics.TEXT_JUSTIFY_CENTER);
-        y += lineHeight;
+        y += drawFittedText(dc, y, Graphics.FONT_XTINY, "raw " + valueOrDash(_connection.tripOdometer) + "/" + valueOrDash(_connection.lifeOdometer));
 
         if (_connection.halfwayWarningActive) {
             dc.setColor(Graphics.COLOR_ORANGE, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(width / 2, y, Graphics.FONT_XTINY, "Past halfway battery", Graphics.TEXT_JUSTIFY_CENTER);
+            drawFittedText(dc, y, Graphics.FONT_XTINY, "Past halfway battery");
         }
     }
 
     // Page 2: board diagnostics -- mode, safety, motor temps.
     private function drawBoardPage(dc as Dc, width as Number, yStart as Number) as Void {
         var y = yStart;
-        var lineHeight = dc.getFontHeight(Graphics.FONT_MEDIUM);
 
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, y, Graphics.FONT_MEDIUM, ridingModeText(_connection.ridingMode), Graphics.TEXT_JUSTIFY_CENTER);
-        y += lineHeight + 8;
-
-        dc.drawText(width / 2, y, Graphics.FONT_MEDIUM, safetyText(_connection.safetyHeadroom), Graphics.TEXT_JUSTIFY_CENTER);
-        y += lineHeight + 8;
-
-        dc.drawText(width / 2, y, Graphics.FONT_MEDIUM, "Motor Temps", Graphics.TEXT_JUSTIFY_CENTER);
-        y += lineHeight;
-        dc.drawText(width / 2, y, Graphics.FONT_MEDIUM, valueOrDash(_connection.motorTempAF) + "F / " + valueOrDash(_connection.motorTempBF) + "F", Graphics.TEXT_JUSTIFY_CENTER);
+        y += drawFittedText(dc, y, Graphics.FONT_MEDIUM, ridingModeText(_connection.ridingMode)) + 8;
+        y += drawFittedText(dc, y, Graphics.FONT_MEDIUM, safetyText(_connection.safetyHeadroom)) + 8;
+        y += drawFittedText(dc, y, Graphics.FONT_MEDIUM, "Motor Temps");
+        drawFittedText(dc, y, Graphics.FONT_MEDIUM, valueOrDash(_connection.motorTempAF) + "F / " + valueOrDash(_connection.motorTempBF) + "F");
     }
 
     private function drawPageDots(dc as Dc, width as Number, height as Number) as Void {
@@ -193,5 +191,64 @@ class OnewheelView extends WatchUi.View {
             }
         }
         return hour.toString() + ":" + clockTime.min.format("%02d") + suffix;
+    }
+
+    // How much horizontal room actually exists at a given Y on a round
+    // display -- shrinks fast away from vertical center. 0.88 is a safety
+    // margin for the bezel and devices that aren't a perfect circle.
+    private function maxWidthAtY(dc as Dc, yTop as Number, textHeight as Number) as Number {
+        var radius = dc.getWidth() / 2.0;
+        var cy = dc.getHeight() / 2.0;
+        var yMid = yTop + textHeight / 2.0;
+        var dy = (yMid - cy).abs();
+        if (dy >= radius) {
+            return 0;
+        }
+        var halfWidth = Math.sqrt(radius * radius - dy * dy);
+        return (halfWidth * 2 * 0.88).toNumber();
+    }
+
+    private function findSplitIndex(text as String, target as Number) as Number? {
+        var best = null;
+        var bestDist = 999999;
+        var len = text.length();
+        for (var i = 0; i < len; i += 1) {
+            if (text.substring(i, i + 1).equals(" ")) {
+                var dist = (i - target).abs();
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = i;
+                }
+            }
+        }
+        return best;
+    }
+
+    // Draws centered text, and if it wouldn't fit within the round display's
+    // actual width at this Y, splits it onto a second line at the nearest
+    // space to the middle instead of letting it run off the edge. Returns
+    // the vertical space consumed (one or two lines) so callers can advance
+    // their layout cursor correctly either way.
+    private function drawFittedText(dc as Dc, y as Number, font as Graphics.FontType, text as String) as Number {
+        var lineHeight = dc.getFontHeight(font);
+        var textWidth = dc.getTextWidthInPixels(text, font);
+        var maxWidth = maxWidthAtY(dc, y, lineHeight);
+
+        if (textWidth <= maxWidth) {
+            dc.drawText(dc.getWidth() / 2, y, font, text, Graphics.TEXT_JUSTIFY_CENTER);
+            return lineHeight;
+        }
+
+        var splitAt = findSplitIndex(text, text.length() / 2);
+        if (splitAt == null) {
+            dc.drawText(dc.getWidth() / 2, y, font, text, Graphics.TEXT_JUSTIFY_CENTER);
+            return lineHeight;
+        }
+
+        var line1 = text.substring(0, splitAt);
+        var line2 = text.substring(splitAt + 1, text.length());
+        dc.drawText(dc.getWidth() / 2, y, font, line1, Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(dc.getWidth() / 2, y + lineHeight, font, line2, Graphics.TEXT_JUSTIFY_CENTER);
+        return lineHeight * 2;
     }
 }
