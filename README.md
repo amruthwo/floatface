@@ -74,7 +74,7 @@ report live telemetry, and that unlock value turns out to be computed
 **server-side by FutureMotion**, tied to your account — not a fixed
 algorithm we can bake into the app. See [PROTOCOL.md](PROTOCOL.md) for the
 full investigation (including a detour through decompiling FutureMotion's
-Android app) that led to that conclusion.
+ app) that led to that conclusion.
 
 Practically, that means **you need to capture your own board's unlock
 bytes once**, the same way we did. It's a one-time setup step, not
@@ -110,7 +110,7 @@ You need this before the app will do anything beyond scan for your board.
 It works by watching FutureMotion's own official Onewheel app unlock your
 board over Bluetooth, and copying the bytes it sends.
 
-### Option A: Android phone + adb (confirmed working)
+### Option A:  phone + adb (confirmed working)
 
 1. On your phone: **Settings → About phone**, tap "Build number" 7 times to
    enable Developer Options.
@@ -123,12 +123,12 @@ board over Bluetooth, and copying the bytes it sends.
    board — this performs the real unlock. (Bonus: if you also change riding
    modes in the app while connected, you'll capture that too, useful for
    confirming the mode-name mapping on your own board.)
-6. Pull the log via a full bug report (modern Android won't let you read it
+6. Pull the log via a full bug report (modern  won't let you read it
    directly without root):
    ```bash
    adb devices
    adb bugreport bugreport.zip
-   unzip -l bugreport.zip | grep btsnoop   # path varies by Android version
+   unzip -l bugreport.zip | grep btsnoop   # path varies by  version
    unzip -p bugreport.zip 'FS/data/log/bt/btsnoop_hci.log' > btsnoop_hci.log
    ```
 7. Set up the Python tooling and parse it:
@@ -153,7 +153,7 @@ flashed with Nordic's free "nRF Sniffer for Bluetooth LE" firmware — can
 passively capture the same handshake over the air, directly between your
 phone and the board, without touching the phone's OS at all. That would
 work regardless of phone OS (including iOS, which has no accessible
-equivalent to Android's HCI snoop log), since it's listening to radio
+equivalent to 's HCI snoop log), since it's listening to radio
 waves, not reading phone logs.
 
 This is plausible because our own BLE connection to the board never
@@ -166,7 +166,7 @@ hardware** — if you try it, we'd love to know if it works.
 
 1. Install the [Connect IQ SDK](https://developer.garmin.com/connect-iq/sdk/)
    (the CLI-based [connect-iq-sdk-manager-cli](https://github.com/lindell/connect-iq-sdk-manager-cli)
-   works well on Linux, no Android Studio required).
+   works well on Linux).
 2. Generate a developer signing key:
    ```bash
    cd garmin-app
