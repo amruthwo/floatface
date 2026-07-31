@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="docs/hero.svg" alt="FLoatface" width="220" />
+  <img src="docs/hero.svg" alt="Floatface" width="220" />
 </p>
 
-<h1 align="center">FLoatface</h1>
+<h1 align="center">Floatface</h1>
 <p align="center"><b>Onewheel telemetry on a Garmin watch — no phone required.</b></p>
 
-FLoatface is a Connect IQ watch-app that talks directly to a Onewheel over
+Floatface is a Connect IQ watch-app that talks directly to a Onewheel over
 Bluetooth Low Energy. No companion phone app, no Onewheel app in the loop —
 the watch connects to the board on its own, unlocks it, and shows live
 speed, battery, riding mode, motor temps, and more, while recording a real
@@ -74,7 +74,7 @@ report live telemetry, and that unlock value turns out to be computed
 **server-side by FutureMotion**, tied to your account — not a fixed
 algorithm we can bake into the app. See [PROTOCOL.md](PROTOCOL.md) for the
 full investigation (including a detour through decompiling FutureMotion's
- app) that led to that conclusion.
+Android app) that led to that conclusion.
 
 Practically, that means **you need to capture your own board's unlock
 bytes once**, the same way we did. It's a one-time setup step, not
@@ -82,7 +82,7 @@ something the app can do for you automatically.
 
 ## The watch and the official Onewheel app can't both be connected at once
 
-This isn't a bug in FLoatface — it's how the board's Bluetooth firmware
+This isn't a bug in Floatface — it's how the board's Bluetooth firmware
 works. Onewheel boards only support **one BLE connection at a time**. We
 confirmed this directly: with a phone connected via the official app, the
 board stops advertising entirely, so nothing else (our watch, a laptop, a
@@ -99,9 +99,9 @@ mean writing and maintaining a whole separate phone app, reintroducing
 exactly the phone dependency this project exists to avoid.
 
 **In practice**: use one or the other. Turn off your phone's Bluetooth (or
-background/force-quit the Onewheel app) before opening FLoatface, and
+background/force-quit the Onewheel app) before opening Floatface, and
 vice versa when you need something only the official app currently
-provides. If FLoatface can't find your board within 30 seconds, it'll show
+provides. If Floatface can't find your board within 30 seconds, it'll show
 a hint suggesting this is probably why.
 
 ## Capturing your board's unlock bytes
@@ -110,7 +110,7 @@ You need this before the app will do anything beyond scan for your board.
 It works by watching FutureMotion's own official Onewheel app unlock your
 board over Bluetooth, and copying the bytes it sends.
 
-### Option A:  phone + adb (confirmed working)
+### Option A: Android phone + adb (confirmed working)
 
 1. On your phone: **Settings → About phone**, tap "Build number" 7 times to
    enable Developer Options.
@@ -123,12 +123,12 @@ board over Bluetooth, and copying the bytes it sends.
    board — this performs the real unlock. (Bonus: if you also change riding
    modes in the app while connected, you'll capture that too, useful for
    confirming the mode-name mapping on your own board.)
-6. Pull the log via a full bug report (modern  won't let you read it
+6. Pull the log via a full bug report (modern Android won't let you read it
    directly without root):
    ```bash
    adb devices
    adb bugreport bugreport.zip
-   unzip -l bugreport.zip | grep btsnoop   # path varies by  version
+   unzip -l bugreport.zip | grep btsnoop   # path varies by Android version
    unzip -p bugreport.zip 'FS/data/log/bt/btsnoop_hci.log' > btsnoop_hci.log
    ```
 7. Set up the Python tooling and parse it:
@@ -153,7 +153,7 @@ flashed with Nordic's free "nRF Sniffer for Bluetooth LE" firmware — can
 passively capture the same handshake over the air, directly between your
 phone and the board, without touching the phone's OS at all. That would
 work regardless of phone OS (including iOS, which has no accessible
-equivalent to 's HCI snoop log), since it's listening to radio
+equivalent to Android's HCI snoop log), since it's listening to radio
 waves, not reading phone logs.
 
 This is plausible because our own BLE connection to the board never

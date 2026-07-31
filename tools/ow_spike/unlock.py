@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Onewheel BLE protocol validation spike -- Phase 0 of the FLoatface project.
+"""Onewheel BLE protocol validation spike -- Phase 0 of the Floatface project.
 
 Throwaway diagnostic script, not the final architecture. Its only job is to
 confirm, against a real board, that the unlock handshake and characteristic
