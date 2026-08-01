@@ -81,9 +81,12 @@ KNOWN_FIRMWARE_REVISIONS = {
     (15, 194): "Onewheel+",
 }
 
+# Confirmed empirically against a real GT (cycled modes in the official app
+# while watching this raw value) -- see PROTOCOL.md. Supersedes the old
+# pre-GT classic/extreme/elevated/... guess this used to have.
 RIDING_MODE_NAMES = {
-    1: "classic", 2: "extreme", 3: "elevated",
-    4: "sequoia", 5: "cruz", 6: "mission",
+    3: "Bay", 4: "Roam", 5: "Flow",
+    6: "Highline", 7: "Elevated", 8: "Apex",
 }
 
 # Characteristics worth subscribing to once unlocked, for the live telemetry
@@ -126,12 +129,17 @@ class OnewheelSpike:
     def __init__(
         self, address: str | None, duration: float, reunlock_interval: float,
         skip_unlock: bool = False, raw_unlock_response: bytes | None = None,
+        test_mode_isolation: bool = False, test_mode_sweep: bool = False,
+        test_shaping_drift: bool = False,
     ):
         self.address = address
         self.duration = duration
         self.reunlock_interval = reunlock_interval
         self.skip_unlock = skip_unlock
         self.raw_unlock_response = raw_unlock_response
+        self.test_mode_isolation = test_mode_isolation
+        self.test_mode_sweep = test_mode_sweep
+        self.test_shaping_drift = test_shaping_drift
         self.client: BleakClient | None = None
         self.challenge_buffer = bytearray()
         self.challenge_start_time = 0.0
@@ -260,6 +268,164 @@ class OnewheelSpike:
             except Exception as exc:
                 log(f"  [read] {name}: FAILED {exc!r}")
 
+    async def test_mode_shaping_isolation(self) -> None:
+        """Writes ONLY riding_mode -- never touching custom_shaping at all --
+        then checks whether custom_shaping's flat value changes as a side
+        effect. Tests whether the board reconfigures its active shaping
+        internally on a mode switch (custom_shaping should change on its own)
+        or whether the app has to separately push shaping parameters too
+        (custom_shaping would stay exactly the same)."""
+        uuid_by_name = {v: k for k, v in KNOWN_CHARACTERISTICS.items()}
+        riding_mode_uuid = uuid_by_name["riding_mode"]
+        custom_shaping_uuid = uuid_by_name["custom_shaping"]
+
+        current_mode_raw = bytes(await self.client.read_gatt_char(riding_mode_uuid))
+        current_mode = int.from_bytes(current_mode_raw, byteorder="big")
+        before_shaping = bytes(await self.client.read_gatt_char(custom_shaping_uuid))
+        log(
+            f"BEFORE: riding_mode={current_mode} ({RIDING_MODE_NAMES.get(current_mode, '?')})"
+            f"  custom_shaping raw={before_shaping.hex()}"
+        )
+
+        target_mode = 3 if current_mode != 3 else 8  # toggle Bay <-> Apex
+        log(
+            f"Writing ONLY riding_mode -> {target_mode} ({RIDING_MODE_NAMES.get(target_mode, '?')}), "
+            "not touching custom_shaping at all..."
+        )
+        await self.client.write_gatt_char(riding_mode_uuid, target_mode.to_bytes(2, byteorder="big"), response=True)
+
+        await asyncio.sleep(2.0)
+
+        after_mode_raw = bytes(await self.client.read_gatt_char(riding_mode_uuid))
+        after_mode = int.from_bytes(after_mode_raw, byteorder="big")
+        after_shaping = bytes(await self.client.read_gatt_char(custom_shaping_uuid))
+        log(
+            f"AFTER:  riding_mode={after_mode} ({RIDING_MODE_NAMES.get(after_mode, '?')})"
+            f"  custom_shaping raw={after_shaping.hex()}"
+        )
+
+        if before_shaping == after_shaping:
+            log(
+                "VERDICT: custom_shaping did NOT change. Either writing riding_mode alone isn't "
+                "sufficient to actually change the board's shaping behavior, or this flat 2-byte "
+                "value just doesn't capture the full ~20-parameter set (see PROTOCOL.md) -- "
+                "inconclusive on its own, the indexed-read protocol would need replicating to be sure."
+            )
+        else:
+            log(
+                "VERDICT: custom_shaping DID change on its own. Supports the board reconfiguring "
+                "its active shaping internally when riding_mode changes -- writing riding_mode alone "
+                "looks sufficient."
+            )
+
+    async def test_mode_shaping_sweep(self) -> None:
+        """Walks riding_mode through every mode up (Bay->Apex) then back down
+        (Apex->Bay), writing ONLY riding_mode each time and reading
+        custom_shaping after every single transition. Unlike the one-shot
+        isolation test, this checks whether custom_shaping's value for a given
+        mode is REPEATABLE -- i.e. mode 5 always yields the same custom_shaping
+        value regardless of which mode we came from -- which is what you'd
+        expect if custom_shaping is a stable per-mode preset index rather than
+        something that drifts/accumulates."""
+        uuid_by_name = {v: k for k, v in KNOWN_CHARACTERISTICS.items()}
+        riding_mode_uuid = uuid_by_name["riding_mode"]
+        custom_shaping_uuid = uuid_by_name["custom_shaping"]
+
+        up = [3, 4, 5, 6, 7, 8]
+        down = [7, 6, 5, 4, 3]
+        sequence = up + down
+
+        observed: dict[int, list[str]] = {}
+
+        current_mode_raw = bytes(await self.client.read_gatt_char(riding_mode_uuid))
+        current_mode = int.from_bytes(current_mode_raw, byteorder="big")
+        current_shaping = bytes(await self.client.read_gatt_char(custom_shaping_uuid))
+        log(
+            f"START: riding_mode={current_mode} ({RIDING_MODE_NAMES.get(current_mode, '?')})"
+            f"  custom_shaping raw={current_shaping.hex()}"
+        )
+        observed.setdefault(current_mode, []).append(current_shaping.hex())
+
+        for target_mode in sequence:
+            log(f"Writing riding_mode -> {target_mode} ({RIDING_MODE_NAMES.get(target_mode, '?')})...")
+            await self.client.write_gatt_char(
+                riding_mode_uuid, target_mode.to_bytes(2, byteorder="big"), response=True
+            )
+            await asyncio.sleep(2.0)
+
+            after_mode_raw = bytes(await self.client.read_gatt_char(riding_mode_uuid))
+            after_mode = int.from_bytes(after_mode_raw, byteorder="big")
+            after_shaping = bytes(await self.client.read_gatt_char(custom_shaping_uuid))
+            log(
+                f"  -> riding_mode={after_mode} ({RIDING_MODE_NAMES.get(after_mode, '?')})"
+                f"  custom_shaping raw={after_shaping.hex()}"
+            )
+            observed.setdefault(after_mode, []).append(after_shaping.hex())
+
+        log("=== Summary: custom_shaping raw value(s) observed per riding_mode ===")
+        all_consistent = True
+        for mode in sorted(observed):
+            values = observed[mode]
+            distinct = sorted(set(values))
+            consistent = len(distinct) == 1
+            all_consistent = all_consistent and consistent
+            mark = "OK" if consistent else "INCONSISTENT"
+            log(
+                f"  mode {mode} ({RIDING_MODE_NAMES.get(mode, '?')}): "
+                f"{', '.join(distinct)}  [{len(values)} sample(s)]  {mark}"
+            )
+
+        if all_consistent:
+            log(
+                "VERDICT: every mode produced the SAME custom_shaping value every time it was visited, "
+                "regardless of direction/path. Strongly supports custom_shaping being a stable per-mode "
+                "preset index the board sets internally from riding_mode alone -- writing riding_mode "
+                "alone looks sufficient and predictable."
+            )
+        else:
+            log(
+                "VERDICT: at least one mode produced DIFFERENT custom_shaping values across visits. "
+                "That's unexpected -- either custom_shaping depends on more than just riding_mode "
+                "(e.g. path-dependent, or partly reflects live ride state), or a read raced a write. "
+                "Worth re-running before trusting riding_mode-only writes."
+            )
+
+    async def test_shaping_drift_control(self) -> None:
+        """Control test for the mode/shaping experiments above: reads
+        custom_shaping repeatedly over ~30s while writing NOTHING at all (no
+        riding_mode changes) to see whether it changes on its own. The sweep
+        test showed custom_shaping giving different values on repeat visits to
+        the same mode, which could mean it's not actually tied to riding_mode
+        at all (e.g. a live/rolling value) -- this isolates that by removing
+        writes from the picture entirely."""
+        uuid_by_name = {v: k for k, v in KNOWN_CHARACTERISTICS.items()}
+        riding_mode_uuid = uuid_by_name["riding_mode"]
+        custom_shaping_uuid = uuid_by_name["custom_shaping"]
+
+        mode_raw = bytes(await self.client.read_gatt_char(riding_mode_uuid))
+        mode = int.from_bytes(mode_raw, byteorder="big")
+        log(f"Holding riding_mode={mode} ({RIDING_MODE_NAMES.get(mode, '?')}) -- writing NOTHING, just reading custom_shaping 15x over ~30s...")
+
+        values = []
+        for i in range(15):
+            shaping = bytes(await self.client.read_gatt_char(custom_shaping_uuid))
+            log(f"  [{i:2d}] custom_shaping raw={shaping.hex()}")
+            values.append(shaping.hex())
+            await asyncio.sleep(2.0)
+
+        distinct = sorted(set(values))
+        if len(distinct) == 1:
+            log(f"VERDICT: rock solid at {distinct[0]} across all {len(values)} reads with zero writes. "
+                "custom_shaping does NOT drift on its own -- the sweep test's inconsistency needs another "
+                "explanation (e.g. a read racing the board settling after a write).")
+        else:
+            log(f"VERDICT: custom_shaping changed on its own ({', '.join(distinct)}) with ZERO writes and "
+                "riding_mode held constant. It is NOT simply a function of riding_mode -- it's a live/rolling "
+                "value (possibly tied to real-time balance/pitch state, or some internal counter), which means "
+                "the sweep test's inconsistency is explained by this, not by riding_mode-only writes being "
+                "insufficient. This characteristic can't be used as evidence either way for whether mode-only "
+                "writes actually change ride dynamics.")
+
     async def run(self) -> None:
         address = await self.find_board()
         async with BleakClient(address) as client:
@@ -280,6 +446,24 @@ class OnewheelSpike:
 
             log("=== Reading a snapshot of key characteristics directly (not just notify) ===")
             await self.read_snapshot()
+
+            if self.test_shaping_drift:
+                log("=== Running custom_shaping drift control test (zero writes) ===")
+                await self.test_shaping_drift_control()
+                log("Done.")
+                return
+
+            if self.test_mode_sweep:
+                log("=== Running riding_mode / custom_shaping sweep test (Bay->Apex->Bay) ===")
+                await self.test_mode_shaping_sweep()
+                log("Done.")
+                return
+
+            if self.test_mode_isolation:
+                log("=== Running riding_mode / custom_shaping isolation test ===")
+                await self.test_mode_shaping_isolation()
+                log("Done.")
+                return
 
             log("=== Subscribing to telemetry characteristics ===")
             await self.subscribe_telemetry()
@@ -345,6 +529,26 @@ def main() -> None:
              "characteristic instead -- for testing a value captured from a real handshake "
              "(e.g. via btsnoop_parse.py) directly against the board",
     )
+    parser.add_argument(
+        "--test-mode-isolation", action="store_true",
+        help="Write ONLY riding_mode (toggling Bay<->Apex), never touching custom_shaping, and check "
+             "whether custom_shaping's flat value changes as a side effect -- tests whether the board "
+             "reconfigures shaping internally on a mode switch or needs it pushed separately. "
+             "Requires --raw-unlock-response (or a working live handshake).",
+    )
+    parser.add_argument(
+        "--test-mode-sweep", action="store_true",
+        help="Write ONLY riding_mode through every mode Bay->Apex then back down Apex->Bay, reading "
+             "custom_shaping after each transition, and check whether each mode always yields the SAME "
+             "custom_shaping value regardless of path. Requires --raw-unlock-response (or a working "
+             "live handshake).",
+    )
+    parser.add_argument(
+        "--test-shaping-drift", action="store_true",
+        help="Control test: read custom_shaping repeatedly over ~30s while writing NOTHING at all (no "
+             "riding_mode changes) to see if it changes on its own. Requires --raw-unlock-response (or a "
+             "working live handshake).",
+    )
     args = parser.parse_args()
 
     if args.scan_all:
@@ -352,7 +556,10 @@ def main() -> None:
         return
 
     raw_response = bytes.fromhex(args.raw_unlock_response) if args.raw_unlock_response else None
-    spike = OnewheelSpike(args.address, args.duration, args.reunlock_interval, args.skip_unlock, raw_response)
+    spike = OnewheelSpike(
+        args.address, args.duration, args.reunlock_interval, args.skip_unlock, raw_response,
+        args.test_mode_isolation, args.test_mode_sweep, args.test_shaping_drift,
+    )
     asyncio.run(spike.run())
 
 

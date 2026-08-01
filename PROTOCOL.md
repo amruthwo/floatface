@@ -250,6 +250,61 @@ official app while watching the raw value on our own watch:
 
 "Custom Shaping" mode's number not yet observed/confirmed.
 
+## Ride-mode switching investigated, NOT implemented (safety)
+
+Considered adding a feature to switch riding modes (Bay/Roam/.../Apex) from
+the watch. Before writing any Monkey C, ran three diagnostics against the
+real board with `tools/ow_spike/unlock.py` to determine whether writing
+`riding_mode` alone is actually sufficient to change the board's ride
+dynamics, or whether the official app must separately push full shaping
+parameters too (in which case writing `riding_mode` alone could silently
+leave the *previous* mode's shaping active under the new mode's name/display
+— a real safety concern, not a cosmetic one).
+
+1. **Single-transition isolation test** (`--test-mode-isolation`): read
+   `riding_mode` + `custom_shaping`, write ONLY `riding_mode` (Flow -> Bay,
+   never touching `custom_shaping`), read both again.
+   `custom_shaping` changed (`0300` -> `1300`), which on its own looked like
+   support for the board reconfiguring shaping internally on a mode switch.
+
+2. **Full sweep test** (`--test-mode-sweep`): walked `riding_mode` through
+   every mode up (Bay -> Apex) then back down (Apex -> Bay), writing only
+   `riding_mode` each time and reading `custom_shaping` after every
+   transition, to check whether each mode reliably produces the *same*
+   `custom_shaping` value regardless of path. It did not: every mode except
+   the one visited only once showed multiple different `custom_shaping`
+   values across separate visits (e.g. Bay: `0200`, `1300`, `1400`; Roam:
+   `0600`, `0b00`). This contradicted test 1's implication of a stable
+   per-mode preset index.
+
+3. **Drift control test** (`--test-shaping-drift`): the deciding test. Held
+   `riding_mode` constant at Bay and made **zero writes at all**, just
+   reading `custom_shaping` repeatedly (~every 2s). It changed on nearly
+   every single read anyway: `0000, 1000, 0700, 1400, 0a00, 0100, 0d00,
+   0400, 1000, 0000` — with riding_mode never touched.
+
+**Conclusion**: `custom_shaping` is not a function of `riding_mode` at all —
+it's a live/rolling value (most likely tied to real-time balance/pitch
+state, or an internal counter, not a per-mode shaping preset index). Test
+1's apparent "confirmation" was very likely coincidental drift, not
+causation, and test 2's "inconsistency" is fully explained by this rather
+than being evidence against mode-only writes. Net result: **this
+characteristic cannot be used as evidence either way** for whether writing
+`riding_mode` alone actually changes the board's ride dynamics — we ended
+the investigation with the original safety question (does the board
+silently keep the old mode's shaping active under the new mode's name?)
+neither confirmed nor ruled out.
+
+The only test that could actually answer this is a physical one — ride the
+board after a `riding_mode`-only write (with the official app fully
+disconnected) and judge by feel whether the dynamics actually match the new
+mode. That's subjective, easy to misjudge, and risky to evaluate solo at
+speed. Given the stakes of getting this wrong (a board that behaves
+differently than its displayed mode suggests, mid-ride), **ride-mode
+switching is not implemented in the watch app**. If revisited later, it
+would need that physical validation first, done deliberately and safely,
+before any watch UI is built around it.
+
 ## `safety_headroom` puzzle: stayed `1` through an entire real ride too
 
 Toggling the "Safestop" setting off/on in the official app produced no
@@ -303,7 +358,11 @@ than just a plausible-sounding assumption now.
 - `safety_headroom`'s real meaning -- now have direct evidence against the
   "boolean warning flag" theory from two separate real rides (stayed `1`
   throughout both), true meaning still unknown.
-- `custom_shaping`'s encoding on GT, and "Custom Shaping" mode's `riding_mode` number.
+- `custom_shaping`'s real meaning -- confirmed to be a live/rolling value
+  unrelated to `riding_mode` (see "Ride-mode switching investigated" above),
+  but what it actually tracks (balance state? a counter? something else?)
+  is unknown.
+- "Custom Shaping" mode's `riding_mode` number.
 - Motor temps ran hotter on the second real ride (111°F/118°F vs. ~102°F max
   on the first) -- not yet enough data to know if that's normal variation
   or worth tracking as a trend.
