@@ -64,6 +64,15 @@ list below and [PROTOCOL.md](PROTOCOL.md) for everything still uncertain.
 - The board's own raw trip/lifetime odometer values are shown but unitless
   — we don't yet know their scale.
 
+**Investigated, deliberately not implemented:**
+- Switching riding modes (Bay/Roam/Flow/Highline/Elevated/Apex) from the
+  watch. Three separate BLE tests couldn't confirm that writing the mode
+  alone actually changes the board's ride dynamics rather than just its
+  displayed name — the characteristic we hoped would prove it turned out to
+  be an unrelated live value that drifts on its own, mode or no mode. Rather
+  than guess at a safety-relevant BLE write, this isn't implemented. Full
+  writeup in [PROTOCOL.md](PROTOCOL.md#ride-mode-switching-investigated-not-implemented-safety).
+
 ## Why no phone is needed
 
 Connect IQ has supported direct Bluetooth Low Energy access from the watch
