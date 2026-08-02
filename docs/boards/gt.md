@@ -47,6 +47,6 @@ See PROTOCOL.md for details.
 
 ## `life_odometer`
 
-Reads as a plausible plain whole-mile count (one data point: raw `20`
-matched the board's real ~20mi lifetime total). Not yet confirmed with a
-second board or a second reading.
+Confirmed as a plain whole-mile count: raw `20` matched the official
+Onewheel app's own displayed lifetime odometer (20mi) on the same board.
+Not yet confirmed on a second board.

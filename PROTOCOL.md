@@ -351,14 +351,16 @@ right number to use; not applying a correction based on one data point
 (within normal GPS/tire-pressure noise), but this is real validation rather
 than just a plausible-sounding assumption now.
 
-## `life_odometer` on GT: likely a plain whole-mile counter, no scaling factor
+## `life_odometer` on GT: confirmed plain whole-mile counter, no scaling factor
 
 Read `life_odometer` directly from a live GT: raw value `20`. The board's
-owner estimated its actual lifetime mileage (all rides combined) at "probably
-around 20 miles total" -- a real cross-check, not a guess on our part, same
-pattern as the earlier GPS-distance validation. That match suggests GT's
-`life_odometer` is exposed over BLE as a plain integer mile count, with no
-large per-mile scaling factor.
+owner first estimated its actual lifetime mileage (all rides combined) at
+"probably around 20 miles total," and then confirmed it precisely by
+reconnecting the official Onewheel app, which also reports the lifetime
+odometer as 20mi. That's a real confirmation against the official app's own
+displayed value, not just a rough personal estimate -- GT's `life_odometer`
+is exposed over BLE as a plain integer mile count, with no large per-mile
+scaling factor.
 
 This matters because pre-GT boards are documented (in unrelated third-party
 firmware-patching research, not something Floatface uses or depends on) to
@@ -369,9 +371,8 @@ consistent with that -- if the same ~1810 scaling applied here, `life_odometer`
 would have to read in the tens of thousands, not `20`. Good independent
 signal that whatever GT's internal encoding is, it isn't that pre-GT scheme.
 
-Not fully confirmed with a second data point yet -- one board, one rough
-mileage estimate. `trip_odometer` read `0` in the same session (board had
-just been power-cycled, consistent with trip resetting on power-up, not
+Still only one board. `trip_odometer` read `0` in the same session (board
+had just been power-cycled, consistent with trip resetting on power-up, not
 re-tested against a known non-zero trip distance yet).
 
 ## `battery_cell_voltages` reads back empty on GT

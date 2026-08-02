@@ -114,17 +114,22 @@ class OnewheelView extends WatchUi.View {
         }
     }
 
-    // Page 2: board diagnostics -- mode, safety, motor temps.
+    // Page 2: board diagnostics -- mode, motor/battery temps, lifetime
+    // odometer. safety_headroom isn't shown here -- a real ride confirmed
+    // it stays "1" throughout completely normal riding, so our "boolean
+    // warning flag" theory is likely wrong and there's nothing trustworthy
+    // to show yet. Still recorded in the FIT file. See PROTOCOL.md.
     private function drawBoardPage(dc as Dc, width as Number, yStart as Number) as Void {
         var y = yStart;
 
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         y += drawFittedText(dc, y, Graphics.FONT_MEDIUM, ridingModeText(_connection.ridingMode)) + 8;
-        y += drawFittedText(dc, y, Graphics.FONT_MEDIUM, safetyText(_connection.safetyHeadroom)) + 8;
+
+        y += drawFittedText(dc, y, Graphics.FONT_SMALL, "Motor: " + valueOrDash(_connection.motorTempAF) + "F / " + valueOrDash(_connection.motorTempBF) + "F") + 4;
+        y += drawFittedText(dc, y, Graphics.FONT_SMALL, "Battery: " + valueOrDash(_connection.batteryTempAF) + "F / " + valueOrDash(_connection.batteryTempBF) + "F") + 8;
 
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        y += drawFittedText(dc, y, Graphics.FONT_XTINY, "Motor: " + valueOrDash(_connection.motorTempAF) + "F / " + valueOrDash(_connection.motorTempBF) + "F") + 2;
-        drawFittedText(dc, y, Graphics.FONT_XTINY, "Battery: " + valueOrDash(_connection.batteryTempAF) + "F / " + valueOrDash(_connection.batteryTempBF) + "F");
+        drawFittedText(dc, y, Graphics.FONT_XTINY, "Odometer: " + valueOrDash(_connection.lifeOdometer) + " mi");
     }
 
     private function drawPageDots(dc as Dc, width as Number, height as Number) as Void {
@@ -172,13 +177,6 @@ class OnewheelView extends WatchUi.View {
         }
         var name = RIDING_MODE_NAMES.get(ridingMode);
         return name != null ? name : "Mode " + ridingMode;
-    }
-
-    // Showing the raw value, not a WARN/OK label -- a real ride confirmed
-    // this stays "1" throughout completely normal riding, so our "boolean
-    // warning flag" theory is likely wrong. See PROTOCOL.md.
-    private function safetyText(safetyHeadroom as Number?) as String {
-        return "Safety " + valueOrDash(safetyHeadroom);
     }
 
     private function currentTimeText() as String {

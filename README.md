@@ -54,16 +54,18 @@ list below and [PROTOCOL.md](PROTOCOL.md) for everything still uncertain.
 - Speed/trip distance (RPM-based, using GT's published 11.5" tire diameter)
   came within 2% of GPS-measured distance on a real ride (1.77 mi estimated
   vs. 1.74 mi GPS) — close enough to trust as an estimate.
+- `life_odometer` is a plain whole-mile count on GT — raw `20` matched the
+  official Onewheel app's own displayed lifetime odometer (20mi) on the same
+  board.
 
 **Not yet calibrated / confirmed:**
 - `safety_headroom`'s real meaning is unknown — it read "1" through two
   entire normal rides, so whatever we originally guessed ("safety warning")
-  is probably wrong. Shown as a raw number, not a label.
+  is probably wrong. Not shown on-screen until its meaning is known, though
+  it's still recorded to the FIT file.
 - `riding_mode`'s name mapping (Bay/Roam/Flow/Highline/Elevated/Apex) is
   confirmed for GT; other models/firmware may differ.
-- `life_odometer` looks like a plain whole-mile count on GT (raw `20` matched
-  the board's real ~20mi lifetime total) — one data point, not yet confirmed
-  further. `trip_odometer` not yet cross-checked against a known distance.
+- `trip_odometer` not yet cross-checked against a known distance.
 
 **Investigated, deliberately not implemented:**
 - Switching riding modes (Bay/Roam/Flow/Highline/Elevated/Apex) from the
