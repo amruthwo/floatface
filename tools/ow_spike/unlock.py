@@ -95,6 +95,7 @@ RIDING_MODE_NAMES = {
 TELEMETRY_CHARACTERISTICS = [
     "battery_level", "speed_rpm", "riding_mode",
     "safety_headroom", "motor_controller_temp", "status",
+    "trip_amp_hours", "trip_regen_amp_hours",
 ]
 
 

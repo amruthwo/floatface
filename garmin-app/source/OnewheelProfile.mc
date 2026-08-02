@@ -22,6 +22,8 @@ module OnewheelProfile {
     const STATUS_UUID              = BluetoothLowEnergy.stringToUuid("e659f30f-ea98-11e3-ac10-0800200c9a66");
     const TRIP_ODOMETER_UUID       = BluetoothLowEnergy.stringToUuid("e659f30a-ea98-11e3-ac10-0800200c9a66");
     const LIFE_ODOMETER_UUID       = BluetoothLowEnergy.stringToUuid("e659f319-ea98-11e3-ac10-0800200c9a66");
+    const TRIP_AMP_HOURS_UUID      = BluetoothLowEnergy.stringToUuid("e659f313-ea98-11e3-ac10-0800200c9a66");
+    const TRIP_REGEN_AMP_HOURS_UUID = BluetoothLowEnergy.stringToUuid("e659f314-ea98-11e3-ac10-0800200c9a66");
 
     // Re-send the unlock every 15s -- empirically the board re-locks (all
     // telemetry characteristics reporting 0) around 20s after unlocking.
@@ -42,7 +44,9 @@ module OnewheelProfile {
                 { :uuid => BATTERY_LOW_TEMP_UUID, :descriptors => [BluetoothLowEnergy.cccdUuid()] },
                 { :uuid => STATUS_UUID, :descriptors => [BluetoothLowEnergy.cccdUuid()] },
                 { :uuid => TRIP_ODOMETER_UUID, :descriptors => [BluetoothLowEnergy.cccdUuid()] },
-                { :uuid => LIFE_ODOMETER_UUID, :descriptors => [BluetoothLowEnergy.cccdUuid()] }
+                { :uuid => LIFE_ODOMETER_UUID, :descriptors => [BluetoothLowEnergy.cccdUuid()] },
+                { :uuid => TRIP_AMP_HOURS_UUID, :descriptors => [BluetoothLowEnergy.cccdUuid()] },
+                { :uuid => TRIP_REGEN_AMP_HOURS_UUID, :descriptors => [BluetoothLowEnergy.cccdUuid()] }
             ]
         });
     }

@@ -43,8 +43,10 @@ class OnewheelView extends WatchUi.View {
             drawRidePage(dc, width, y);
         } else if (_connection.currentPage == 1) {
             drawStatsPage(dc, width, y);
-        } else {
+        } else if (_connection.currentPage == 2) {
             drawBoardPage(dc, width, y);
+        } else {
+            drawDiagnosticsPage(dc, width, y);
         }
 
         drawPageDots(dc, width, dc.getHeight());
@@ -134,11 +136,26 @@ class OnewheelView extends WatchUi.View {
         drawFittedText(dc, y, Graphics.FONT_XTINY, "s_h: " + valueOrDash(_connection.safetyHeadroom));
     }
 
+    // Page 3: diagnostic only -- checking whether trip_amp_hours/
+    // trip_regen_amp_hours actually update live while riding, or read back
+    // empty the way battery_voltage/battery_amperage/battery_cell_voltages
+    // did. Not confirmed to mean anything yet, hence "raw" and no units.
+    // See PROTOCOL.md/CONTRIBUTING.md.
+    private function drawDiagnosticsPage(dc as Dc, width as Number, yStart as Number) as Void {
+        var y = yStart;
+
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        y += drawFittedText(dc, y, Graphics.FONT_MEDIUM, "Amp Hours (raw)") + 8;
+
+        y += drawFittedText(dc, y, Graphics.FONT_SMALL, "Trip: " + valueOrDash(_connection.tripAmpHours)) + 4;
+        drawFittedText(dc, y, Graphics.FONT_SMALL, "Regen: " + valueOrDash(_connection.tripRegenAmpHours));
+    }
+
     private function drawPageDots(dc as Dc, width as Number, height as Number) as Void {
         var dotY = height - 14;
         var spacing = 14;
-        var startX = width / 2 - spacing;
-        for (var i = 0; i < 3; i += 1) {
+        var startX = width / 2 - (spacing * (PAGE_COUNT - 1)) / 2;
+        for (var i = 0; i < PAGE_COUNT; i += 1) {
             dc.setColor(i == _connection.currentPage ? Graphics.COLOR_WHITE : Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
             dc.fillCircle(startX + (i * spacing), dotY, 3);
         }

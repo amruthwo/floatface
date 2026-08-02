@@ -9,7 +9,7 @@ import Toybox.System;
 import Toybox.Timer;
 import Toybox.WatchUi;
 
-const PAGE_COUNT = 3;
+const PAGE_COUNT = 4;
 
 // If the board isn't found within this long, it's most likely because a
 // phone (with the official Onewheel app) already holds the board's one
@@ -62,6 +62,11 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
     // caveat as wheel RPM->mph. See PROTOCOL.md.
     var tripOdometer as Number?;
     var lifeOdometer as Number?;
+    // Diagnostic only, for now -- checking whether these actually update
+    // live while riding, or read back empty like battery_voltage/amperage.
+    // See CONTRIBUTING.md/PROTOCOL.md.
+    var tripAmpHours as Number?;
+    var tripRegenAmpHours as Number?;
 
     // Our own distance, integrated from wheel RPM->mph over time (not the
     // board's ambiguous raw odometer -- see PROTOCOL.md). Same "(est.)"
@@ -282,6 +287,10 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
             tripOdometer = value.decodeNumber(Lang.NUMBER_FORMAT_UINT16, options);
         } else if (uuid.equals(OnewheelProfile.LIFE_ODOMETER_UUID)) {
             lifeOdometer = value.decodeNumber(Lang.NUMBER_FORMAT_UINT16, options);
+        } else if (uuid.equals(OnewheelProfile.TRIP_AMP_HOURS_UUID)) {
+            tripAmpHours = value.decodeNumber(Lang.NUMBER_FORMAT_UINT16, options);
+        } else if (uuid.equals(OnewheelProfile.TRIP_REGEN_AMP_HOURS_UUID)) {
+            tripRegenAmpHours = value.decodeNumber(Lang.NUMBER_FORMAT_UINT16, options);
         } else if (uuid.equals(OnewheelProfile.SPEED_RPM_UUID)) {
             speedRpm = value.decodeNumber(Lang.NUMBER_FORMAT_UINT16, options);
             speedMph = rpmToMph(speedRpm as Number);
@@ -343,6 +352,8 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
         addIfPresent(service, OnewheelProfile.STATUS_UUID);
         addIfPresent(service, OnewheelProfile.TRIP_ODOMETER_UUID);
         addIfPresent(service, OnewheelProfile.LIFE_ODOMETER_UUID);
+        addIfPresent(service, OnewheelProfile.TRIP_AMP_HOURS_UUID);
+        addIfPresent(service, OnewheelProfile.TRIP_REGEN_AMP_HOURS_UUID);
 
         status = "Subscribing...";
         WatchUi.requestUpdate();
@@ -423,6 +434,8 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
         boardStatus = null;
         tripOdometer = null;
         lifeOdometer = null;
+        tripAmpHours = null;
+        tripRegenAmpHours = null;
         // Not distanceMilesThisRide/estimatedRangeMiles -- those are our own
         // accumulated ride state and shouldn't reset just because the BLE
         // link hiccuped. Do clear the timestamp so a reconnect after a gap
