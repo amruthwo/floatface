@@ -52,14 +52,18 @@ list below and [PROTOCOL.md](PROTOCOL.md) for everything still uncertain.
 
 **Confirmed against real rides:**
 - Speed/trip distance (RPM-based, using GT's published 11.5" tire diameter)
-  came within 2% of GPS-measured distance on a real ride (1.77 mi estimated
-  vs. 1.74 mi GPS) — close enough to trust as an estimate.
+  has stayed within ~2-3% of GPS-measured distance across three real rides
+  (e.g. 7.42 mi estimated vs. 7.23 mi GPS) — close enough to trust as an
+  estimate.
 - `life_odometer` is a plain whole-mile count on GT — raw `20` matched the
-  official Onewheel app's own displayed lifetime odometer (20mi) on the same
-  board.
+  official Onewheel app's own displayed lifetime odometer (20mi), and was
+  later watched climbing live in step with a ride's GPS distance too.
+- `trip_amp_hours`/`trip_regen_amp_hours` are populated with real,
+  live-updating data during a ride (unlike `battery_voltage`/`amperage`/
+  `cell_voltages`, which read back empty) — exact unit not yet confirmed.
 
 **Not yet calibrated / confirmed:**
-- `safety_headroom`'s real meaning is unknown — it read "1" through two
+- `safety_headroom`'s real meaning is unknown — it read "1" through three
   entire normal rides, so whatever we originally guessed ("safety warning")
   is probably wrong. Not shown on-screen until its meaning is known, though
   it's still recorded to the FIT file.

@@ -320,12 +320,23 @@ connecting before the board's sensors were fully settled). Current app
 shows the raw number rather than a WARN/OK label, since asserting either
 would be a guess we now have direct evidence against.
 
+A third full real ride (~7.2mi, 33:37) reinforces this: `safety_headroom`
+read `1` in every single screenshot taken throughout, start to finish.
+Three real rides now, never once `0` during normal riding.
+
 ## Motor temp trend sanity-checked on a real ride
 
 Across one real ride, both motor temp readings rose monotonically as the
 ride progressed (84°/82°F -> 84°/81°F -> 90°/81°F -> 102°/90°F), consistent
 with motors heating up under actual load. Good independent confirmation the
 signed-byte-Celsius decoding is correct, beyond just "plausible range."
+
+A third real ride (~7.2mi) reinforces this further, and extends it to
+`battery_low_temp` for the first time under real load (previously only
+checked once at rest): motor 84°/79°F -> 100°/93°F -> 118°/131°F ->
+127°/142°F -> 124°/145°F, battery 82°/82°F -> 82°/86°F -> 90°/97°F ->
+93°/100°F -> 93°/104°F. Both climb monotonically under sustained riding,
+same physically-plausible pattern as the first ride.
 
 ## GPS was never being recorded -- root cause found and fixed
 
@@ -351,6 +362,15 @@ right number to use; not applying a correction based on one data point
 (within normal GPS/tire-pressure noise), but this is real validation rather
 than just a plausible-sounding assumption now.
 
+Two more real rides since then, both still in the same small-error
+ballpark, no correction applied: **3.34 mi** estimated vs. **3.24 mi** GPS
+(~3% off), and **7.42 mi** estimated vs. **7.23 mi** GPS (~2.6% off, on a
+33:37 ride). Consistently a slight overestimate across all three rides
+rather than random noise in both directions, which is worth keeping in mind
+if a future correction ever gets applied -- but three data points isn't
+enough yet to say whether that's a real small bias or just GPS/tire-pressure
+variance that happens to have landed the same direction three times.
+
 ## `life_odometer` on GT: confirmed plain whole-mile counter, no scaling factor
 
 Read `life_odometer` directly from a live GT: raw value `20`. The board's
@@ -361,6 +381,12 @@ odometer as 20mi. That's a real confirmation against the official app's own
 displayed value, not just a rough personal estimate -- GT's `life_odometer`
 is exposed over BLE as a plain integer mile count, with no large per-mile
 scaling factor.
+
+Stronger confirmation from a later real ride: `life_odometer` climbed from
+`20` to `27` (watched live across the ride, not just a single before/after
+check) while Garmin's GPS measured that same ride at 7.23mi -- a 7-mile
+increase against a 7.23mi GPS-measured ride, both from live in-ride
+tracking rather than one static comparison.
 
 This matters because pre-GT boards are documented (in unrelated third-party
 firmware-patching research, not something Floatface uses or depends on) to
@@ -405,25 +431,106 @@ signed bytes (same decoding already confirmed for `motor_controller_temp`,
 see above) gives 29°C/28°C (84°F/82°F) -- a plausible battery temperature at
 rest, and notably identical to `motor_controller_temp`'s raw value in the
 same read, consistent with a board that had been sitting idle long enough
-for motor and battery temperatures to converge toward ambient. Not yet
-cross-checked against a real ride's battery temp trend the way
-`motor_controller_temp` was.
+for motor and battery temperatures to converge toward ambient. Cross-checked
+against a real ride's trend since -- see "Motor temp trend sanity-checked on
+a real ride" above, which now covers battery temp too.
+
+## `trip_amp_hours`/`trip_regen_amp_hours` confirmed live and updating on a real ride
+
+Unlike `battery_voltage`/`battery_amperage`/`battery_cell_voltages` (all
+confirmed empty), `trip_amp_hours` and `trip_regen_amp_hours` climbed
+steadily and monotonically throughout an entire real ride:
+
+| Time | trip_amp_hours | trip_regen_amp_hours |
+|------|----------------|----------------------|
+| 12:10 | 21 | -- |
+| 12:11 | 359 | 24 |
+| 12:15 | 1,647 | 266 |
+| 12:29 | 7,902 | 1,404 |
+| 12:40 | 11,694 | 2,139 |
+| 12:43 | 13,301 | 2,364 |
+
+Both are genuinely populated with real, live-updating data -- a real
+positive result, distinct from the flat-zero characteristics above. Regen
+climbing too is physically sensible (real regenerative braking during the
+ride; the recorded activity's ascent/descent were both 174ft, consistent
+with a mixed-terrain route that included real coasting/braking).
+
+**Not literal amp-hours** -- 13,301 Ah in one ~34-minute ride is impossible
+for a personal transporter (would require sustained multi-thousand-amp
+draw). Checked whether milliamp-hours fits, using GT's actual published
+pack spec (18s2p 21700 NMC cells, **525Wh, 63V nominal, 75V max** --
+publicly published, not independently verified by us, but a real spec
+rather than a guess): that puts total pack capacity at **525/63 ≈ 8.33 Ah**.
+If `13301` raw were literally milliamp-hours (13.301 Ah), that alone would
+be **~1.6x the entire pack's total capacity** -- for a ride that only used
+roughly a quarter of the battery (see below). **This rules out literal
+milliamp-hours.**
+
+Cross-checked against the observed battery-percentage drop instead: from
+~85.6% to 59% (~26.6 points) implies roughly 139.65Wh actually consumed
+(26.6% of 525Wh) -- **2,217 mAh** at nominal voltage. The raw counter
+increased by ~11,976 over that same window, which works out to **~5.4 raw
+units per real mAh** -- i.e. `trip_amp_hours` looks like it's counting
+something roughly **5x finer-grained than milliamp-hours**, not milliamp-
+hours itself. Not confirmed as an exact conversion factor, just the
+ballpark this specific ride's numbers land on.
+
+**Bonus finding while computing this**: broke the ride into its three
+inter-reading segments and computed raw-counter-increase-per-battery-
+percent-point for each:
+
+| Segment | %Δ | raw Δ | raw/% |
+|---------|-----|-------|-------|
+| 12:14→12:29 | -12 | +6,577 | 548.1 |
+| 12:29→12:40 | -7 | +3,792 | 541.7 |
+| 12:40→12:43 | -4 | +1,607 | 401.8 |
+
+The first two segments are close (548, 542), but the last one drops off
+notably (402, ~26% lower) -- meaning less real energy was consumed per
+displayed percentage point late in the ride than earlier. That's the
+direction you'd expect if `battery_level`'s percentage is nonlinear with
+real stored energy the way Li-ion gauges commonly are (compressed near the
+low end, so each remaining percent represents less real range than the same
+percent did near the top) -- and matches the rider's own experience with
+RC battery packs. **This is suggestive, not proven**: it's one ride, three
+segments, and riding style/pace wasn't controlled between them (e.g. slower
+or more coasting near the end of a ride would produce the same signal with
+a perfectly linear gauge). Worth checking across more rides before treating
+it as confirmed -- the data needed already exists in every ride now that
+`trip_amp_hours` is tracked live.
+
+**Net: milliamp-hours is ruled out; the real scale is unconfirmed but looks
+roughly 5x finer than mAh.** Still shown as "raw" in the app. The
+low-battery nonlinearity signal is real but unconfirmed with one ride's
+data -- see "Still open" and the halfway-warning discussion this raised.
 
 ## Still open / not investigated
 
 - Whether the external BLE sniffer dongle approach actually works in practice
   (not yet tested).
 - `safety_headroom`'s real meaning -- now have direct evidence against the
-  "boolean warning flag" theory from two separate real rides (stayed `1`
-  throughout both), true meaning still unknown.
+  "boolean warning flag" theory from three separate real rides (stayed `1`
+  throughout all three), true meaning still unknown.
 - `custom_shaping`'s real meaning -- confirmed to be a live/rolling value
   unrelated to `riding_mode` (see "Ride-mode switching investigated" above),
   but what it actually tracks (balance state? a counter? something else?)
   is unknown.
 - "Custom Shaping" mode's `riding_mode` number.
-- Motor temps ran hotter on the second real ride (111°F/118°F vs. ~102°F max
-  on the first) -- not yet enough data to know if that's normal variation
-  or worth tracking as a trend.
-  `enableLocationEvents`/`Positioning` permission.
+- Max motor/battery temps have risen across each successive real ride so far
+  (~102°F -> 111°/118°F -> 124°/145°F) -- not yet enough data to know if
+  that's a real trend (ambient temp, ride intensity/duration, seasonal) or
+  coincidence; worth tracking over more rides.
+- `trip_amp_hours`/`trip_regen_amp_hours`'s exact scale/unit -- confirmed
+  live and populated with real data, milliamp-hours ruled out, looks roughly
+  5x finer-grained than mAh but not confirmed (see above).
+- Whether `battery_level`'s percentage is actually nonlinear with real
+  stored energy (compressed near the low end) -- one ride's `trip_amp_hours`
+  data is suggestive (see above) but confounded by uncontrolled riding style
+  across the ride, not confirmed. If real, the halfway-battery warning
+  (currently a flat 50% of starting percentage) may be triggering later than
+  intended, since a percentage-point near empty could represent less real
+  remaining range than one near full. Worth checking across more rides
+  before changing the warning threshold -- not changed yet.
 - The old pre-GT MD5 password's native derivation (irrelevant to GT, not
   pursued).

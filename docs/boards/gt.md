@@ -48,5 +48,14 @@ See PROTOCOL.md for details.
 ## `life_odometer`
 
 Confirmed as a plain whole-mile count: raw `20` matched the official
-Onewheel app's own displayed lifetime odometer (20mi) on the same board.
-Not yet confirmed on a second board.
+Onewheel app's own displayed lifetime odometer (20mi) on the same board, and
+a later real ride watched it climb from `20` to `27` live, matching that
+ride's 7.23mi GPS-measured distance. Not yet confirmed on a second board.
+
+## `trip_amp_hours`/`trip_regen_amp_hours`
+
+Confirmed populated with real, live-updating data during a real ride (unlike
+`battery_voltage`/`amperage`/`cell_voltages`, which stay flat zero).
+Milliamp-hours ruled out (using GT's published 525Wh/63V pack spec); looks
+roughly 5x finer-grained than mAh, exact scale still unconfirmed. See
+[PROTOCOL.md](../../PROTOCOL.md#trip_amp_hourstrip_regen_amp_hours-confirmed-live-and-updating-on-a-real-ride).
