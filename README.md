@@ -61,8 +61,9 @@ list below and [PROTOCOL.md](PROTOCOL.md) for everything still uncertain.
   is probably wrong. Shown as a raw number, not a label.
 - `riding_mode`'s name mapping (Bay/Roam/Flow/Highline/Elevated/Apex) is
   confirmed for GT; other models/firmware may differ.
-- The board's own raw trip/lifetime odometer values are shown but unitless
-  — we don't yet know their scale.
+- `life_odometer` looks like a plain whole-mile count on GT (raw `20` matched
+  the board's real ~20mi lifetime total) — one data point, not yet confirmed
+  further. `trip_odometer` not yet cross-checked against a known distance.
 
 **Investigated, deliberately not implemented:**
 - Switching riding modes (Bay/Roam/Flow/Highline/Elevated/Apex) from the
@@ -201,7 +202,20 @@ tools/ow_spike/        Python BLE spike scripts used to reverse-engineer
                        and validate the protocol before writing Monkey C
 PROTOCOL.md            Everything confirmed (and still open) about the
                        Onewheel BLE protocol
+docs/boards/           What's known/unknown per Onewheel model (only GT is
+                       fully confirmed) -- see CONTRIBUTING.md to help fill
+                       in another model
 ```
+
+## Other Onewheel models
+
+Floatface only has real hardware to test against a GT. The BLE protocol is
+confirmed shared across generations, but tire diameter and riding mode
+names/numbers are model-specific and mostly unconfirmed for anything else --
+see [docs/boards/](docs/boards/) for what's known per model, and
+[CONTRIBUTING.md](CONTRIBUTING.md) if you'd like to help establish the rest
+for a Pint, XR, or other board using the same GPS-cross-check and live-testing
+methodology this project has used throughout.
 
 ## Acknowledgments
 

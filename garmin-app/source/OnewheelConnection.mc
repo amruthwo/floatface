@@ -53,6 +53,10 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
     // found -- shown as two values rather than guessing/averaging them.
     var motorTempAF as Number?;
     var motorTempBF as Number?;
+    // battery_low_temp -- same two-independent-signed-byte-Celsius shape as
+    // motor_controller_temp, confirmed against a live GT. See PROTOCOL.md.
+    var batteryTempAF as Number?;
+    var batteryTempBF as Number?;
     var boardStatus as Number?;
     // Raw board odometer units -- not yet calibrated to real miles, same
     // caveat as wheel RPM->mph. See PROTOCOL.md.
@@ -305,6 +309,11 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
             if (_motorTempBField != null) {
                 _motorTempBField.setData(motorTempBF as Object);
             }
+        } else if (uuid.equals(OnewheelProfile.BATTERY_LOW_TEMP_UUID)) {
+            var battTempAC = value.decodeNumber(Lang.NUMBER_FORMAT_SINT8, { :offset => 0 }) as Number;
+            var battTempBC = value.decodeNumber(Lang.NUMBER_FORMAT_SINT8, { :offset => 1 }) as Number;
+            batteryTempAF = celsiusToFahrenheit(battTempAC);
+            batteryTempBF = celsiusToFahrenheit(battTempBC);
         } else if (uuid.equals(OnewheelProfile.STATUS_UUID)) {
             boardStatus = value.decodeNumber(Lang.NUMBER_FORMAT_UINT16, options);
         }
@@ -330,6 +339,7 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
         addIfPresent(service, OnewheelProfile.RIDING_MODE_UUID);
         addIfPresent(service, OnewheelProfile.SAFETY_HEADROOM_UUID);
         addIfPresent(service, OnewheelProfile.MOTOR_CONTROLLER_TEMP_UUID);
+        addIfPresent(service, OnewheelProfile.BATTERY_LOW_TEMP_UUID);
         addIfPresent(service, OnewheelProfile.STATUS_UUID);
         addIfPresent(service, OnewheelProfile.TRIP_ODOMETER_UUID);
         addIfPresent(service, OnewheelProfile.LIFE_ODOMETER_UUID);
@@ -408,6 +418,8 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
         safetyHeadroom = null;
         motorTempAF = null;
         motorTempBF = null;
+        batteryTempAF = null;
+        batteryTempBF = null;
         boardStatus = null;
         tripOdometer = null;
         lifeOdometer = null;

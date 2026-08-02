@@ -130,7 +130,7 @@ class OnewheelSpike:
         self, address: str | None, duration: float, reunlock_interval: float,
         skip_unlock: bool = False, raw_unlock_response: bytes | None = None,
         test_mode_isolation: bool = False, test_mode_sweep: bool = False,
-        test_shaping_drift: bool = False,
+        test_shaping_drift: bool = False, identify_only: bool = False,
     ):
         self.address = address
         self.duration = duration
@@ -140,6 +140,7 @@ class OnewheelSpike:
         self.test_mode_isolation = test_mode_isolation
         self.test_mode_sweep = test_mode_sweep
         self.test_shaping_drift = test_shaping_drift
+        self.identify_only = identify_only
         self.client: BleakClient | None = None
         self.challenge_buffer = bytearray()
         self.challenge_start_time = 0.0
@@ -168,6 +169,29 @@ class OnewheelSpike:
             for char in service.characteristics:
                 name = KNOWN_CHARACTERISTICS.get(char.uuid.lower(), "UNKNOWN")
                 log(f"  {char.uuid}  {name:24s}  props={char.properties}")
+
+    async def identify(self) -> None:
+        """Reads firmware_revision and hardware_revision WITHOUT unlocking --
+        both are readable pre-unlock (confirmed: the handshake itself reads
+        firmware_revision before writing anything). Useful first step for
+        anyone with a non-GT board: figure out what you have and what
+        firmware it's on before attempting to capture unlock bytes at all.
+        See docs/boards/ and CONTRIBUTING.md."""
+        uuid_by_name = {v: k for k, v in KNOWN_CHARACTERISTICS.items()}
+
+        firmware_rev = bytes(await self.client.read_gatt_char(FIRMWARE_REVISION_CHAR))
+        firmware_int = int.from_bytes(firmware_rev, byteorder="big")
+        model = KNOWN_FIRMWARE_REVISIONS.get(tuple(firmware_rev), f"UNKNOWN ({firmware_rev.hex()})")
+        generation = firmware_int // 1000
+        log(f"firmware_revision: raw={firmware_rev.hex()} uint={firmware_int} -> {model}")
+        log(f"Inferred generation: {generation} (firmware_revision // 1000) -- see docs/boards/README.md")
+
+        hw_uuid = uuid_by_name.get("hardware_revision")
+        try:
+            hardware_rev = bytes(await self.client.read_gatt_char(hw_uuid))
+            log(f"hardware_revision: raw={hardware_rev.hex()} uint={int.from_bytes(hardware_rev, byteorder='big')}")
+        except Exception as exc:
+            log(f"hardware_revision: FAILED {exc!r}")
 
     def _on_challenge_notify(self, _char, data: bytearray) -> None:
         elapsed = time.monotonic() - self.challenge_start_time
@@ -259,7 +283,15 @@ class OnewheelSpike:
 
     async def read_snapshot(self) -> None:
         uuid_by_name = {v: k for k, v in KNOWN_CHARACTERISTICS.items()}
-        for name in ["battery_level", "riding_mode", "safety_headroom", "serial_number", "custom_shaping"]:
+        for name in [
+            "battery_level", "riding_mode", "safety_headroom", "serial_number", "custom_shaping",
+            "battery_cell_voltages", "trip_odometer", "life_odometer",
+            "hardware_revision", "status", "last_errors", "data_29", "data_31", "data_32",
+            "battery_serial", "battery_low_5", "battery_low_20", "battery_low_temp",
+            "battery_voltage", "battery_amperage", "motor_controller_temp",
+            "lighting_mode", "lighting_back", "lighting_front", "speed_rpm",
+            "pitch", "roll", "yaw", "trip_regen_amp_hours", "trip_amp_hours", "life_amp_hours",
+        ]:
             uuid = uuid_by_name.get(name)
             try:
                 data = bytes(await self.client.read_gatt_char(uuid))
@@ -433,6 +465,12 @@ class OnewheelSpike:
             log(f"Connected to {address}")
             await self.dump_services()
 
+            if self.identify_only:
+                log("=== --identify set: reading firmware/hardware revision only, no unlock attempted ===")
+                await self.identify()
+                log("Done.")
+                return
+
             if self.raw_unlock_response is not None:
                 await self.send_raw_unlock()
             elif self.skip_unlock:
@@ -549,6 +587,12 @@ def main() -> None:
              "riding_mode changes) to see if it changes on its own. Requires --raw-unlock-response (or a "
              "working live handshake).",
     )
+    parser.add_argument(
+        "--identify", action="store_true",
+        help="Connect and read firmware_revision/hardware_revision ONLY -- no unlock attempted at all. "
+             "Useful first step for a non-GT board: figure out what you have and what firmware it's on "
+             "before trying to capture unlock bytes. See docs/boards/ and CONTRIBUTING.md.",
+    )
     args = parser.parse_args()
 
     if args.scan_all:
@@ -558,7 +602,7 @@ def main() -> None:
     raw_response = bytes.fromhex(args.raw_unlock_response) if args.raw_unlock_response else None
     spike = OnewheelSpike(
         args.address, args.duration, args.reunlock_interval, args.skip_unlock, raw_response,
-        args.test_mode_isolation, args.test_mode_sweep, args.test_shaping_drift,
+        args.test_mode_isolation, args.test_mode_sweep, args.test_shaping_drift, args.identify,
     )
     asyncio.run(spike.run())
 

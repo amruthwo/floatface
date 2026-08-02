@@ -121,8 +121,10 @@ class OnewheelView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         y += drawFittedText(dc, y, Graphics.FONT_MEDIUM, ridingModeText(_connection.ridingMode)) + 8;
         y += drawFittedText(dc, y, Graphics.FONT_MEDIUM, safetyText(_connection.safetyHeadroom)) + 8;
-        y += drawFittedText(dc, y, Graphics.FONT_MEDIUM, "Motor Temps");
-        drawFittedText(dc, y, Graphics.FONT_MEDIUM, valueOrDash(_connection.motorTempAF) + "F / " + valueOrDash(_connection.motorTempBF) + "F");
+
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        y += drawFittedText(dc, y, Graphics.FONT_XTINY, "Motor: " + valueOrDash(_connection.motorTempAF) + "F / " + valueOrDash(_connection.motorTempBF) + "F") + 2;
+        drawFittedText(dc, y, Graphics.FONT_XTINY, "Battery: " + valueOrDash(_connection.batteryTempAF) + "F / " + valueOrDash(_connection.batteryTempBF) + "F");
     }
 
     private function drawPageDots(dc as Dc, width as Number, height as Number) as Void {

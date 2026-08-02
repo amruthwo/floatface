@@ -351,6 +351,63 @@ right number to use; not applying a correction based on one data point
 (within normal GPS/tire-pressure noise), but this is real validation rather
 than just a plausible-sounding assumption now.
 
+## `life_odometer` on GT: likely a plain whole-mile counter, no scaling factor
+
+Read `life_odometer` directly from a live GT: raw value `20`. The board's
+owner estimated its actual lifetime mileage (all rides combined) at "probably
+around 20 miles total" -- a real cross-check, not a guess on our part, same
+pattern as the earlier GPS-distance validation. That match suggests GT's
+`life_odometer` is exposed over BLE as a plain integer mile count, with no
+large per-mile scaling factor.
+
+This matters because pre-GT boards are documented (in unrelated third-party
+firmware-patching research, not something Floatface uses or depends on) to
+store their persisted lifetime mileage in flash scaled by a factor of 1810
+per mile -- explicitly only for pre-GT generations, with newer (GT) firmware
+noted as using "a different settings layout." A raw `20` on this GT is
+consistent with that -- if the same ~1810 scaling applied here, `life_odometer`
+would have to read in the tens of thousands, not `20`. Good independent
+signal that whatever GT's internal encoding is, it isn't that pre-GT scheme.
+
+Not fully confirmed with a second data point yet -- one board, one rough
+mileage estimate. `trip_odometer` read `0` in the same session (board had
+just been power-cycled, consistent with trip resetting on power-up, not
+re-tested against a known non-zero trip distance yet).
+
+## `battery_cell_voltages` reads back empty on GT
+
+`e659f31b` (`battery_cell_voltages`) is present in the live GT's service dump
+with `read`/`write`/`notify` properties, but a direct read returns a flat
+2-byte `0000` -- not an error, just empty. Matches the user's recollection
+that the official app doesn't surface per-cell voltages for GT. Also
+structurally implausible as real per-cell data regardless: an 18S GT pack
+would need well over 2 bytes to represent all cells individually. Conclusion:
+this characteristic exists in the shared cross-model BLE profile but isn't
+populated with real data on GT -- not a deeper-unlock question, just not
+wired up on this board.
+
+## `battery_voltage`/`battery_amperage` also read back empty on GT
+
+Same pattern as `battery_cell_voltages`: both characteristics are present
+with `read`/`write`/`notify` properties, but read back a flat `0000` while
+`battery_level` simultaneously reported a real 86%. Amperage at 0 while the
+board is idle is plausible on its own, but pack voltage reading exactly zero
+on a board that's powered on and reporting a real battery percentage is not
+-- a real pack voltage should never be zero. Conclusion: these two, like
+`battery_cell_voltages`, exist in the BLE profile but aren't populated with
+real data on this GT.
+
+## `battery_low_temp` decoded: two signed-byte Celsius readings, same pattern as `motor_controller_temp`
+
+Read directly from a live GT: raw `1d1c`. Splitting into two independent
+signed bytes (same decoding already confirmed for `motor_controller_temp`,
+see above) gives 29°C/28°C (84°F/82°F) -- a plausible battery temperature at
+rest, and notably identical to `motor_controller_temp`'s raw value in the
+same read, consistent with a board that had been sitting idle long enough
+for motor and battery temperatures to converge toward ambient. Not yet
+cross-checked against a real ride's battery temp trend the way
+`motor_controller_temp` was.
+
 ## Still open / not investigated
 
 - Whether the external BLE sniffer dongle approach actually works in practice
