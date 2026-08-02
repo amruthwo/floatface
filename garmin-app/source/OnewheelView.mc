@@ -89,9 +89,11 @@ class OnewheelView extends WatchUi.View {
     }
 
     // Page 1: distance/range stats. Trip/range are our own RPM-integrated
-    // estimates (known unit, unverified wheel diameter); the board's own
-    // raw odometers are kept as small reference numbers for when we
-    // calibrate them against GPS on a future ride -- see PROTOCOL.md.
+    // estimates (known unit, unverified wheel diameter). The board's raw
+    // trip_odometer/life_odometer aren't shown here -- life_odometer is
+    // confirmed and shown on the Board page instead, and trip_odometer can
+    // be read directly via tools/ow_spike/unlock.py whenever it needs
+    // cross-checking, no need for it on a tiny watch line. See PROTOCOL.md.
     private function drawStatsPage(dc as Dc, width as Number, yStart as Number) as Void {
         var y = yStart;
 
@@ -105,9 +107,6 @@ class OnewheelView extends WatchUi.View {
         dc.drawText(width / 2, y, Graphics.FONT_NUMBER_MEDIUM, rangeText, Graphics.TEXT_JUSTIFY_CENTER);
         y += dc.getFontHeight(Graphics.FONT_NUMBER_MEDIUM) + 4;
 
-        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        y += drawFittedText(dc, y, Graphics.FONT_XTINY, "raw " + valueOrDash(_connection.tripOdometer) + "/" + valueOrDash(_connection.lifeOdometer));
-
         if (_connection.halfwayWarningActive) {
             dc.setColor(Graphics.COLOR_ORANGE, Graphics.COLOR_TRANSPARENT);
             drawFittedText(dc, y, Graphics.FONT_XTINY, "Past halfway battery");
@@ -115,10 +114,12 @@ class OnewheelView extends WatchUi.View {
     }
 
     // Page 2: board diagnostics -- mode, motor/battery temps, lifetime
-    // odometer. safety_headroom isn't shown here -- a real ride confirmed
-    // it stays "1" throughout completely normal riding, so our "boolean
-    // warning flag" theory is likely wrong and there's nothing trustworthy
-    // to show yet. Still recorded in the FIT file. See PROTOCOL.md.
+    // odometer, raw safety_headroom. safety_headroom's real meaning is
+    // still unknown -- a real ride confirmed it stays "1" throughout
+    // completely normal riding, so our "boolean warning flag" theory is
+    // likely wrong. Shown small and abbreviated ("s_h") rather than with a
+    // confident label, purely so screenshots across rides can show whether
+    // it ever actually changes. See PROTOCOL.md.
     private function drawBoardPage(dc as Dc, width as Number, yStart as Number) as Void {
         var y = yStart;
 
@@ -129,7 +130,8 @@ class OnewheelView extends WatchUi.View {
         y += drawFittedText(dc, y, Graphics.FONT_SMALL, "Battery: " + valueOrDash(_connection.batteryTempAF) + "F / " + valueOrDash(_connection.batteryTempBF) + "F") + 8;
 
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        drawFittedText(dc, y, Graphics.FONT_XTINY, "Odometer: " + valueOrDash(_connection.lifeOdometer) + " mi");
+        y += drawFittedText(dc, y, Graphics.FONT_XTINY, "Odometer: " + valueOrDash(_connection.lifeOdometer) + " mi") + 2;
+        drawFittedText(dc, y, Graphics.FONT_XTINY, "s_h: " + valueOrDash(_connection.safetyHeadroom));
     }
 
     private function drawPageDots(dc as Dc, width as Number, height as Number) as Void {
