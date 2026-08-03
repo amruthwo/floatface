@@ -25,6 +25,7 @@ class FloatfaceApp extends Application.AppBase {
     function onStop(state as Dictionary?) as Void {
         if (_connection != null) {
             (_connection as OnewheelConnection).saveIfRecording();
+            (_connection as OnewheelConnection).shutdown();
         }
         _connection = null;
         Position.enableLocationEvents(Position.LOCATION_DISABLE, null);

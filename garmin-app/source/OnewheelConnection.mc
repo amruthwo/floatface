@@ -410,6 +410,26 @@ class OnewheelConnection extends BluetoothLowEnergy.BleDelegate {
         WatchUi.requestUpdate();
     }
 
+    // Explicit teardown for when the app is exiting. Without this, the BLE
+    // connection and the keepalive Timer are OS-level resources that don't
+    // go away just because our own variables get nulled out -- and if the
+    // board drops out of range, onConnectedStateChanged's auto-reconnect
+    // would otherwise keep scanning forever with no app UI left to stop it.
+    // unpairDevice() disconnects and tells the BLE subsystem not to
+    // reconnect on its own.
+    public function shutdown() as Void {
+        var device = _device;
+        BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF);
+        // Clear our own state (including _device) before issuing the
+        // disconnect -- onConnectedStateChanged's auto-reconnect only
+        // no-ops once _device is already null, and unpairDevice() can
+        // trigger that callback.
+        resetState();
+        if (device != null) {
+            BluetoothLowEnergy.unpairDevice(device as Device);
+        }
+    }
+
     private function resetState() as Void {
         if (_keepaliveTimer != null) {
             _keepaliveTimer.stop();
