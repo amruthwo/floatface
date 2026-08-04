@@ -160,10 +160,24 @@ Options for that capture step, in order of accessibility:
    "nRF Sniffer for Bluetooth LE" firmware + Wireshark) passively capturing
    the over-the-air exchange between phone and board. Works regardless of
    phone OS (Android or iOS) since it doesn't touch the phone at all --
-   plausible because our own connection to the board never triggered BLE
-   link-layer pairing/encryption, suggesting this board doesn't use it and a
-   passive sniffer would see the same plaintext ATT traffic we got from the
-   HCI snoop log. Not yet tested with real hardware.
+   confirmed plausible because our own connection to the board never
+   triggered BLE link-layer pairing/encryption, so a passive sniffer sees
+   the same plaintext ATT traffic as the HCI snoop log.
+
+   **Confirmed working against real hardware** (a Makerdiary nRF52840 MDK
+   USB dongle running Nordic's sniffer firmware v4.1.1). The key trick: the
+   sniffer's Wireshark toolbar defaults to "All advertising devices" (pure
+   promiscuous mode), which only ever captures the `CONNECT_IND` and then
+   goes back to scanning everyone else -- you have to explicitly select the
+   target device in the toolbar's Device dropdown so the sniffer locks onto
+   and channel-hops with that one connection. Once locked on, the captured
+   20-byte value written to `uart_serial_write` matched the already-known
+   unlock bytes (captured earlier via the `adb bugreport` method)
+   **byte-for-byte**, and the write's target handle was independently
+   cross-checked against a live GATT discovery read (same UUID,
+   `e659f3ff-...`). Two independently-captured methods agreeing exactly is
+   about as strong a confirmation as this project can produce without a
+   second board to test against.
 2. **Android HCI snoop log + `adb bugreport`** (what we did): requires
    Developer Options + USB debugging, Android only.
 3. No practical iOS-native equivalent -- Apple's PacketLogger needs a Mac,
@@ -507,8 +521,6 @@ data -- see "Still open" and the halfway-warning discussion this raised.
 
 ## Still open / not investigated
 
-- Whether the external BLE sniffer dongle approach actually works in practice
-  (not yet tested).
 - `safety_headroom`'s real meaning -- now have direct evidence against the
   "boolean warning flag" theory from three separate real rides (stayed `1`
   throughout all three), true meaning still unknown.
@@ -534,3 +546,14 @@ data -- see "Still open" and the halfway-warning discussion this raised.
   before changing the warning threshold -- not changed yet.
 - The old pre-GT MD5 password's native derivation (irrelevant to GT, not
   pursued).
+- Which exact ATT handle the official app writes to switch `riding_mode`.
+  One sniffer capture showed a plausible-looking write (values matching the
+  Bay-Apex enum, timed with a mode cycle) one handle off from `riding_mode`'s
+  live-confirmed value handle; a second capture of an explicit mode cycle
+  showed no matching write anywhere at all. Contradictory, not resolved --
+  most likely explained by the sniffer dropping frames (a known limitation
+  we already hit once this session with a lost connection follow), but
+  possibly a less direct mode-switch mechanism than a plain characteristic
+  write. Doesn't affect anything -- Floatface doesn't write `riding_mode`
+  regardless of the answer -- so not worth more sniffer time unless it comes
+  up naturally.

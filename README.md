@@ -162,21 +162,44 @@ board over Bluetooth, and copying the bytes it sends.
 9. Copy `garmin-app/source/LocalConfig.mc.example` to
    `garmin-app/source/LocalConfig.mc` and paste your bytes in.
 
-### Option B: external BLE sniffer dongle (untested)
+### Option B: external BLE sniffer dongle (confirmed working)
 
 A standalone BLE radio sniffer — e.g. a Nordic nRF52840 USB dongle (~$15)
 flashed with Nordic's free "nRF Sniffer for Bluetooth LE" firmware — can
 passively capture the same handshake over the air, directly between your
-phone and the board, without touching the phone's OS at all. That would
-work regardless of phone OS (including iOS, which has no accessible
-equivalent to Android's HCI snoop log), since it's listening to radio
-waves, not reading phone logs.
+phone and the board, without touching the phone's OS at all. This works
+regardless of phone OS (including iOS, which has no accessible equivalent
+to Android's HCI snoop log), since it's listening to radio waves, not
+reading phone logs. **Confirmed against real hardware**: the captured
+unlock bytes matched an Option A (`adb bugreport`) capture of the same
+board byte-for-byte.
 
-This is plausible because our own BLE connection to the board never
-triggered any OS-level pairing/encryption — suggesting the link isn't
-encrypted at the radio layer, so a passive sniffer should see the same
-plaintext bytes Option A captures. **Not yet tested against real
-hardware** — if you try it, we'd love to know if it works.
+1. Get an nRF52840-based USB sniffer dongle. Exact flashing steps vary by
+   bootloader — a genuine Nordic PCA10059 uses Nordic DFU, but cheaper
+   third-party dongles (e.g. Makerdiary) often ship Adafruit's UF2
+   bootloader instead, which needs a different flashing path (drag the
+   firmware, converted to `.uf2`, onto the dongle's `UF2BOOT` USB drive).
+   Check what your dongle actually is before following generic Nordic
+   instructions.
+2. Install [`nrfutil`](https://www.nordicsemi.com/Products/Development-tools/nrf-util)
+   and its `ble-sniffer` bundle, then `nrfutil ble-sniffer bootstrap` to
+   register it as a Wireshark extcap interface.
+3. Open Wireshark, select the `nRF Sniffer for Bluetooth LE` interface.
+4. **The most important step, easy to miss**: enable
+   **View → Interface Toolbars → nRF Sniffer for Bluetooth LE**. It defaults
+   to "All advertising devices" (promiscuous mode), which only ever catches
+   the initial `CONNECT_IND` and then goes back to scanning everyone else's
+   traffic. Use the toolbar's **Device** dropdown to select your board
+   specifically (it'll advertise as `ow` + digits) so the sniffer locks onto
+   and follows that one connection instead.
+5. Start the capture, then open the official Onewheel app on your phone and
+   let it connect normally — this performs the real unlock, same as Option A.
+6. In Wireshark, look for a `Write Request` to handle matching
+   `uart_serial_write` (`e659f3ff-...`) carrying a 20-byte value — same
+   target shape as Option A, just captured over the air.
+7. Copy `garmin-app/source/LocalConfig.mc.example` to
+   `garmin-app/source/LocalConfig.mc` and paste your bytes in, same as
+   Option A.
 
 ## Building and installing
 
