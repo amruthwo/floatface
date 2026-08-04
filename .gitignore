@@ -23,6 +23,12 @@ tools/ow_spike/__pycache__/
 tools/ow_spike/*.log
 tools/ow_spike/bugreport.zip
 
+# Same deal for the sniffer-capture spike -- venv, caches, and raw BLE
+# captures (personal handshake data), never commit.
+tools/sniffer_capture/.venv/
+tools/sniffer_capture/__pycache__/
+tools/sniffer_capture/*.pcap
+
 # Loose design-in-progress assets not used by the app itself
 /FFicon.png
 /FFicon.svg
