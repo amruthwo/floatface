@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Floatface -- Capture your board's unlock handshake</title>
+    <link rel="stylesheet" href="./app.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <img src="../hero.svg" alt="" class="logo" />
+      <div>
+        <h1>Onewheel handshake capture</h1>
+        <p class="subtitle">For Floatface, a Garmin watch app that talks directly to your board.</p>
+      </div>
+    </header>
+
+    <nav class="steps" id="steps">
+      <button class="step" data-screen="welcome">1. Welcome</button>
+      <button class="step" data-screen="flash">2. Flash dongle</button>
+      <button class="step" data-screen="capture">3. Capture</button>
+      <button class="step" data-screen="export">4. Export</button>
+    </nav>
+
+    <main>
+      <section class="screen" id="screen-welcome">
+        <h2>What you'll need</h2>
+        <ul class="checklist">
+          <li>A <strong>Makerdiary nRF52840-MDK USB Dongle</strong> running Nordic's nRF Sniffer for Bluetooth LE firmware. Using a different nRF52840 dongle or a Flipper Zero? The <a href="https://github.com/amruthwo/floatface/blob/main/README.md">main README</a>'s manual instructions still work for you -- this tool is built around the Makerdiary dongle specifically.</li>
+          <li>Your phone, with the official Onewheel app installed and able to connect to your board.</li>
+          <li>Chrome, Edge, or Brave on a laptop or desktop. <strong>Not</strong> Firefox or Safari -- they don't support the Web Serial/File System Access APIs this tool depends on, and there's no workaround for that.</li>
+        </ul>
+
+        <div id="support-check" class="callout"></div>
+
+        <p class="note">Nothing you do here leaves your computer. The dongle talks to your laptop over USB, everything is decoded locally in your browser, and the only output is a small text file you save yourself. No server, no account, no upload.</p>
+
+        <div class="actions">
+          <button class="primary" data-goto="flash">Get started</button>
+          <button class="link" data-goto="capture">My dongle's already flashed -- skip to Capture</button>
+        </div>
+      </section>
+
+      <section class="screen" id="screen-flash">
+        <h2>Flash your dongle</h2>
+        <p>If your dongle is already running the nRF Sniffer firmware (for example, if you set it up using the manual README instructions previously), skip this step.</p>
+        <p>Otherwise: put the dongle in bootloader mode (usually a double-tap of its reset button -- check the dongle's own docs), which makes it show up as a USB drive named <code>UF2BOOT</code>. Then:</p>
+        <ol>
+          <li>Pick the <code>.uf2</code> firmware file on your computer. Don't have one yet? Build or download Nordic's nRF Sniffer firmware per the <a href="https://github.com/amruthwo/floatface/blob/main/README.md">main README</a>'s manual instructions, then come back here.</li>
+          <li>Pick the <code>UF2BOOT</code> drive.</li>
+        </ol>
+
+        <div class="actions">
+          <button class="primary" id="pick-firmware-btn">1. Pick .uf2 firmware file</button>
+          <span id="firmware-picked" class="picked-label"></span>
+        </div>
+        <div class="actions">
+          <button class="primary" id="pick-drive-btn" disabled>2. Pick UF2BOOT drive &amp; flash</button>
+        </div>
+
+        <div id="flash-log" class="log" hidden></div>
+
+        <div class="actions">
+          <button class="link" data-goto="welcome">&larr; Back</button>
+          <button class="primary" data-goto="capture">Next: Capture &rarr;</button>
+        </div>
+      </section>
+
+      <section class="screen" id="screen-capture">
+        <h2>Capture the handshake</h2>
+        <ol class="capture-steps">
+          <li>Turn off your laptop's own Bluetooth. (Seriously -- this is the single biggest reason captures fail.)</li>
+          <li>Power-cycle your board (off, then on). A fresh power-on seems to make the app re-run the full unlock handshake reliably.</li>
+          <li>Connect to your dongle below, then wait for your board to appear.</li>
+          <li>Tap your board's card, then open the official Onewheel app on your phone and let it connect. Keep the dongle within a few feet of your phone and board -- a weak signal is the second biggest reason captures fail.</li>
+        </ol>
+
+        <div class="actions">
+          <button class="primary" id="connect-btn">Connect to dongle</button>
+          <button class="primary" id="scan-btn" disabled>Scan for boards</button>
+          <button class="link" id="capture-disconnect-btn" disabled>Disconnect</button>
+        </div>
+
+        <div id="device-list" class="device-list"></div>
+
+        <div id="capture-log" class="log"></div>
+
+        <div class="actions">
+          <button class="link" data-goto="flash">&larr; Back</button>
+        </div>
+      </section>
+
+      <section class="screen" id="screen-export">
+        <h2>Got it!</h2>
+        <p>Your board's unlock handshake, captured and decoded locally:</p>
+        <pre id="handshake-hex" class="hex-display"></pre>
+
+        <div class="actions">
+          <button class="primary" id="copy-hex-btn">Copy hex</button>
+          <button class="primary" id="download-btn">Download LocalConfig.mc</button>
+        </div>
+
+        <p class="note">Drop the downloaded file into <code>garmin-app/source/LocalConfig.mc</code> in your Floatface checkout (it replaces the placeholder from <code>LocalConfig.mc.example</code>), then build and sideload as usual. This value is specific to your board -- see <a href="https://github.com/amruthwo/floatface/blob/main/PROTOCOL.md">PROTOCOL.md</a> for why it can't be shared or reused on a different board.</p>
+
+        <div class="actions">
+          <button class="link" data-goto="capture">Capture another board</button>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a href="https://github.com/amruthwo/floatface">amruthwo/floatface</a> --
+      debugging a capture? try the <a href="./debug.html">raw protocol harness</a>.
+    </footer>
+
+    <script type="module" src="./app.mjs"></script>
+  </body>
+</html>

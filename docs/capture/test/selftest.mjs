@@ -1,7 +1,7 @@
 import { golden } from "./golden.mjs";
-import { encodeSlip, SlipDecoder } from "../slip.mjs";
-import { buildScanRequest, buildSetTemporaryKey, buildFollowRequest, buildPingRequest, parseResponsePacket } from "../packet.mjs";
-import { AttWriteWatcher } from "../att.mjs";
+import { encodeSlip, SlipDecoder } from "../lib/slip.mjs";
+import { buildScanRequest, buildSetTemporaryKey, buildFollowRequest, buildPingRequest, parseResponsePacket } from "../lib/packet.mjs";
+import { AttWriteWatcher } from "../lib/att.mjs";
 
 const results = [];
 function test(name, fn) {

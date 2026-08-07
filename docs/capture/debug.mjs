@@ -2,7 +2,7 @@
 // capture_handshake.py's role: prove the ported protocol works against real
 // hardware before any polished UI gets built on top of it. Deliberately
 // bare: a connect button, a device list, a log, and a result panel.
-import { WebSerialSniffer } from "./sniffer.mjs";
+import { WebSerialSniffer } from "./lib/sniffer.mjs";
 
 const connectBtn = document.getElementById("connectBtn");
 const scanBtn = document.getElementById("scanBtn");

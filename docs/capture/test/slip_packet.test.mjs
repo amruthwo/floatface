@@ -7,8 +7,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-import { encodeSlip, SlipDecoder } from "../slip.mjs";
-import { buildScanRequest, buildSetTemporaryKey, buildFollowRequest, buildPingRequest } from "../packet.mjs";
+import { encodeSlip, SlipDecoder } from "../lib/slip.mjs";
+import { buildScanRequest, buildSetTemporaryKey, buildFollowRequest, buildPingRequest } from "../lib/packet.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const golden = JSON.parse(readFileSync(path.join(here, "golden.json"), "utf8"));

@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Floatface webble_spike</title>
+    <title>Floatface capture debug harness</title>
     <style>
       body { font-family: ui-monospace, monospace; background: #111; color: #ddd; padding: 1.5rem; max-width: 720px; margin: 0 auto; }
       h1 { font-size: 1.1rem; }
@@ -17,8 +17,8 @@
     </style>
   </head>
   <body>
-    <h1>Floatface webble_spike -- JS port validation (not the polished PWA yet)</h1>
-    <p>Requires Chrome/Edge/Brave (Web Serial) served over http/https, not file://. Turn off your laptop's own Bluetooth before capturing -- see project notes.</p>
+    <h1>Floatface capture debug harness -- bare protocol test, not the polished tool</h1>
+    <p>Requires Chrome/Edge/Brave (Web Serial) served over http/https, not file://. Turn off your laptop's own Bluetooth before capturing, and power-cycle the board right before following -- see project notes. Looking for the actual capture tool? See <a href="./index.html" style="color:#8cf">index.html</a>.</p>
     <p>
       <button id="connectBtn">Connect to dongle</button>
       <button id="scanBtn" disabled>Scan for ow* boards</button>

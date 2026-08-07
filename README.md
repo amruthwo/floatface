@@ -126,6 +126,22 @@ You need this before the app will do anything beyond scan for your board.
 It works by watching FutureMotion's own official Onewheel app unlock your
 board over Bluetooth, and copying the bytes it sends.
 
+### Easiest: the in-browser capture tool (Makerdiary dongle, confirmed working)
+
+If you have (or are willing to get) a **Makerdiary nRF52840-MDK USB Dongle**,
+**[the in-browser capture tool](https://amruthwo.github.io/floatface/capture/)**
+(requires GitHub Pages to be enabled for this repo, serving from `/docs`)
+walks you through flashing it and capturing the handshake, entirely in
+Chrome/Edge/Brave — no Python, no Wireshark, nothing installed. It's a
+browser-based version of "Option B" below (same underlying protocol, same
+[nRF Sniffer for Bluetooth LE](https://www.nordicsemi.com/Products/Development-tools/nRF-Sniffer-for-Bluetooth-LE)
+firmware), confirmed against real hardware to capture the exact same bytes.
+Everything runs locally in your browser via the Web Serial and File System
+Access APIs — nothing is uploaded anywhere.
+
+Using a different nRF52840 dongle, or a Flipper Zero? The tool is built
+specifically around the Makerdiary dongle; use Option A or B below instead.
+
 ### Option A: Android phone + adb (confirmed working)
 
 1. On your phone: **Settings → About phone**, tap "Build number" 7 times to
