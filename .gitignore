@@ -29,6 +29,11 @@ tools/sniffer_capture/.venv/
 tools/sniffer_capture/__pycache__/
 tools/sniffer_capture/*.pcap
 
+# Stray raw BLE captures saved straight to the repo root during manual
+# Wireshark/sniffer testing -- personal handshake data, never commit.
+/*.pcap
+/*.pcapng
+
 # Loose design-in-progress assets not used by the app itself
 /FFicon.png
 /FFicon.svg
