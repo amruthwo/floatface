@@ -118,6 +118,7 @@ if (hasSerial) {
     onLog: captureLog,
     onDevice: (device) => {
       if (!isOwDevice(device.name) || deviceCards.has(device.addressString)) return;
+      captureLog(`Found ${device.name.replace(/^"|"$/g, "")} @ ${device.addressString} (RSSI ${device.rssi})`);
       addDeviceCard(device);
     },
     onConnect: () => {
