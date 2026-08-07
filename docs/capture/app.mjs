@@ -35,11 +35,15 @@ const hasFsAccess = "showDirectoryPicker" in window;
 if (hasSerial && hasFsAccess) {
   supportEl.textContent = "Your browser supports everything this tool needs.";
   supportEl.className = "callout ok";
+} else if (hasSerial && !hasFsAccess) {
+  supportEl.textContent =
+    "Capture will work, but Flash won't: your browser doesn't expose the File System Access API. This is common in Brave, which disables it by default for privacy -- Chromium and Chrome/Edge have it on. If your dongle's already flashed (from a previous manual setup), this doesn't matter at all -- just skip straight to Capture below.";
+  supportEl.className = "callout warn";
 } else {
   const missing = [];
   if (!hasSerial) missing.push("Web Serial (navigator.serial)");
   if (!hasFsAccess) missing.push("File System Access (for flashing)");
-  supportEl.textContent = `Your browser is missing: ${missing.join(", ")}. Use a recent Chrome, Edge, or Brave instead.`;
+  supportEl.textContent = `Your browser is missing: ${missing.join(", ")}. Web Serial in particular is required for both Flash and Capture -- try Chrome, Edge, or Chromium instead (Brave's support varies).`;
   supportEl.className = "callout error";
 }
 

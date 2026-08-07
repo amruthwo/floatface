@@ -135,6 +135,11 @@ h2 {
   color: var(--ok);
 }
 
+.callout.warn {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
 .callout.error {
   border-color: var(--error);
   color: var(--error);
