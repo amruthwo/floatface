@@ -1,5 +1,5 @@
 import { WebSerialSniffer } from "./lib/sniffer.mjs";
-import { isFlashSupported, pickFirmwareFile, flashFirmware } from "./lib/flash.mjs";
+import { isFlashSupported, pickFirmwareFile, fetchBundledFirmware, flashFirmware } from "./lib/flash.mjs";
 
 // ---- Screen navigation ----
 
@@ -51,6 +51,7 @@ if (hasSerial && hasFsAccess) {
 
 let pickedFirmware = null;
 
+const flashBundledBtn = document.getElementById("flash-bundled-btn");
 const pickFirmwareBtn = document.getElementById("pick-firmware-btn");
 const pickDriveBtn = document.getElementById("pick-drive-btn");
 const firmwarePickedLabel = document.getElementById("firmware-picked");
@@ -63,9 +64,23 @@ function flashLog(msg) {
 }
 
 if (!hasFsAccess) {
+  flashBundledBtn.disabled = true;
+  flashBundledBtn.title = "Your browser doesn't support the File System Access API.";
   pickFirmwareBtn.disabled = true;
   pickFirmwareBtn.title = "Your browser doesn't support the File System Access API.";
 }
+
+flashBundledBtn.addEventListener("click", async () => {
+  flashBundledBtn.disabled = true;
+  try {
+    const firmware = await fetchBundledFirmware();
+    await flashFirmware(firmware, { onLog: flashLog });
+  } catch (e) {
+    if (e.name !== "AbortError") flashLog(`Flash failed: ${e.message}`);
+  } finally {
+    flashBundledBtn.disabled = false;
+  }
+});
 
 pickFirmwareBtn.addEventListener("click", async () => {
   try {
@@ -91,16 +106,30 @@ pickDriveBtn.addEventListener("click", async () => {
 });
 
 // ---- Capture screen ----
+//
+// Friendly guided flow: one Start button chains connect -> scan -> follow
+// (the first ow* board found -- if you have more than one nearby, that's an
+// edge case this simple flow doesn't handle; use the debug harness for
+// that). The full technical event stream still gets logged, but tucked
+// under a <details> instead of being the primary UI, per user feedback that
+// normal users don't want to read console-style output -- they want a
+// plain-language status and a way to export the technical log if they need
+// to ask for help.
 
-const connectBtn = document.getElementById("connect-btn");
-const scanBtn = document.getElementById("scan-btn");
-const captureDisconnectBtn = document.getElementById("capture-disconnect-btn");
-const deviceListEl = document.getElementById("device-list");
+const startBtn = document.getElementById("start-btn");
+const resetBtn = document.getElementById("capture-reset-btn");
+const statusIconEl = document.getElementById("status-icon");
+const statusHeadlineEl = document.getElementById("status-headline");
+const statusSubtextEl = document.getElementById("status-subtext");
+const tipsEl = document.getElementById("capture-tips");
 const captureLogEl = document.getElementById("capture-log");
+const downloadLogBtn = document.getElementById("download-log-btn");
 
+let captureLogText = "";
 function captureLog(msg) {
   const time = new Date().toLocaleTimeString();
-  captureLogEl.textContent += `${time}  ${msg}\n`;
+  captureLogText += `${time}  ${msg}\n`;
+  captureLogEl.textContent = captureLogText;
   captureLogEl.scrollTop = captureLogEl.scrollHeight;
 }
 
@@ -109,88 +138,122 @@ function isOwDevice(name) {
   return bare.toLowerCase().startsWith("ow");
 }
 
-const deviceCards = new Map(); // addressString -> { device, el }
+function setStatus(icon, headline, subtext) {
+  statusIconEl.textContent = icon;
+  statusHeadlineEl.textContent = headline;
+  statusSubtextEl.textContent = subtext;
+}
+
+let stuckTimer = null;
+function clearStuckTimer() {
+  if (stuckTimer) {
+    clearTimeout(stuckTimer);
+    stuckTimer = null;
+  }
+}
+function armStuckTimer(delayMs, icon, headline, subtext) {
+  clearStuckTimer();
+  stuckTimer = setTimeout(() => {
+    setStatus(icon, headline, subtext);
+    tipsEl.hidden = false;
+  }, delayMs);
+}
+
 let capturedHandshake = null;
+let followedDevice = null;
+let captureActive = false;
 
 let sniffer = null;
 if (hasSerial) {
   sniffer = new WebSerialSniffer({
     onLog: captureLog,
     onDevice: (device) => {
-      if (!isOwDevice(device.name) || deviceCards.has(device.addressString)) return;
+      if (!isOwDevice(device.name)) return;
       captureLog(`Found ${device.name.replace(/^"|"$/g, "")} @ ${device.addressString} (RSSI ${device.rssi})`);
-      addDeviceCard(device);
+      if (followedDevice) return; // already following one -- see note above
+      followedDevice = device;
+      const bareName = device.name.replace(/^"|"$/g, "");
+      setStatus("\u{1F4F6}", `Found ${bareName}!`, "Open the official Onewheel app on your phone now and let it connect.");
+      armStuckTimer(20000, "\u{1F914}", "Still watching...", "Haven't seen a connection attempt yet. Make sure the Onewheel app is open and trying to connect.");
+      sniffer.follow(device);
     },
     onConnect: () => {
       captureLog("Connection detected -- watching for the unlock write...");
-      for (const { el } of deviceCards.values()) el.classList.toggle("connected", el.classList.contains("following"));
+      setStatus("\u{1F517}", "Connected! Watching for the unlock signal...", "Keep the Onewheel app open on your phone.");
+      armStuckTimer(15000, "\u{1F914}", "Connected, but no unlock signal yet...", "This is usually quick. See the tips below if it doesn't show up soon.");
     },
     onDisconnect: () => {
       captureLog("Connection ended.");
-      for (const { el } of deviceCards.values()) el.classList.remove("connected");
+      if (!captureActive) return;
+      setStatus("\u{1F501}", "Connection dropped -- that's normal for BLE.", "Still watching in case your board reconnects. Try reconnecting the Onewheel app if this keeps happening.");
+      armStuckTimer(20000, "\u{1F914}", "Still watching...", "See the tips below for things that help.");
     },
     onHandshake: ({ opcode, handle, value }) => {
       const opcodeName = opcode === 0x12 ? "Write Request" : "Write Command";
       captureLog(`ATT ${opcodeName} at handle 0x${handle.toString(16).padStart(4, "0")}, ${value.length} bytes: ${toHex(value)}`);
       if (value.length === 20) {
+        clearStuckTimer();
+        captureActive = false;
         capturedHandshake = value;
+        setStatus("✅", "Got it!", "Taking you to your handshake now...");
         showHandshake(value);
-        showScreen("export");
+        setTimeout(() => showScreen("export"), 600);
       }
     },
   });
 } else {
-  connectBtn.disabled = true;
+  startBtn.disabled = true;
 }
 
 function toHex(bytes) {
   return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join(" ");
 }
 
-function addDeviceCard(device) {
-  const card = document.createElement("div");
-  card.className = "device-card";
-  card.innerHTML = `
-    <div>
-      <div class="name">${device.name.replace(/^"|"$/g, "")}</div>
-      <div class="meta">${device.addressString} -- RSSI ${device.rssi}</div>
-    </div>
-    <button class="primary follow-btn">Follow</button>
-  `;
-  card.querySelector(".follow-btn").addEventListener("click", async () => {
-    for (const { el } of deviceCards.values()) el.classList.remove("following");
-    card.classList.add("following");
-    await sniffer.follow(device);
-    captureLog("Open the official Onewheel app on your phone now and let it connect.");
-  });
-  deviceListEl.appendChild(card);
-  deviceCards.set(device.addressString, { device, el: card });
-}
-
-connectBtn.addEventListener("click", async () => {
-  connectBtn.disabled = true;
+async function startCapture() {
+  captureActive = true;
+  followedDevice = null;
+  startBtn.disabled = true;
+  resetBtn.hidden = false;
+  tipsEl.hidden = true;
+  setStatus("\u{1F50C}", "Connecting to your dongle...", "Pick it from the browser's port list if you're prompted.");
   try {
     await sniffer.connect();
-    scanBtn.disabled = false;
-    captureDisconnectBtn.disabled = false;
+    setStatus("\u{1F50D}", "Looking for your board...", "Make sure it's powered on and nearby.");
+    await sniffer.scan();
+    armStuckTimer(15000, "\u{1F914}", "Still looking...", "Make sure your board is powered on and the dongle is within a few feet of it.");
   } catch (e) {
-    if (e.name !== "NotFoundError") captureLog(`Connect failed: ${e.message}`);
-    connectBtn.disabled = false;
+    if (e.name !== "NotFoundError") {
+      setStatus("⚠️", "Couldn't connect to the dongle.", e.message);
+    }
+    endCapture();
   }
-});
+}
 
-scanBtn.addEventListener("click", async () => {
-  deviceCards.clear();
-  deviceListEl.innerHTML = "";
-  await sniffer.scan();
-});
+function endCapture() {
+  captureActive = false;
+  clearStuckTimer();
+  startBtn.disabled = false;
+}
 
-captureDisconnectBtn.addEventListener("click", async () => {
+startBtn.addEventListener("click", startCapture);
+
+resetBtn.addEventListener("click", async () => {
+  endCapture();
+  resetBtn.hidden = true;
+  tipsEl.hidden = true;
   await sniffer.disconnect();
-  connectBtn.disabled = false;
-  scanBtn.disabled = true;
-  captureDisconnectBtn.disabled = true;
   captureLog("Disconnected from dongle.");
+  setStatus("\u{1F6F9}", "Ready when you are.", "Check the boxes above, then tap \"Start capture.\"");
+});
+
+downloadLogBtn.addEventListener("click", () => {
+  const blob = new Blob([captureLogText || "(empty -- nothing captured yet)\n"], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `floatface-capture-debug-${Date.now()}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
 });
 
 // ---- Export screen ----

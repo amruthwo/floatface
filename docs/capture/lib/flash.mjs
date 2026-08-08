@@ -4,14 +4,23 @@
 // flashing requires; the bootloader does the rest and reboots into the new
 // firmware on its own.
 //
-// This deliberately does NOT bundle Nordic's firmware binary in this repo --
-// the user picks their own .uf2 file (e.g. one they already have, or one
-// produced via `nrfutil ble-sniffer` per the main README's manual
-// instructions). That sidesteps redistribution questions around Nordic's
-// firmware license entirely, at the cost of one extra "pick a file" click
-// versus a fully bundled one-click flash.
+// Nordic's official nRF Sniffer for Bluetooth LE firmware (v4.1.1),
+// pre-converted to .uf2 for the Makerdiary nRF52840-MDK dongle, is bundled
+// alongside this tool -- see ./firmware/NOTICE.md for license terms and
+// provenance. Advanced users with a different nRF52840 dongle can still
+// pick their own .uf2 file instead (pickFirmwareFile below).
+export const BUNDLED_FIRMWARE_URL = "./firmware/nrf-sniffer-ble_v4.1.1_makerdiary-nrf52840-mdk.uf2";
+export const BUNDLED_FIRMWARE_NAME = "nrf-sniffer-ble_v4.1.1_makerdiary-nrf52840-mdk.uf2";
+
 export async function isFlashSupported() {
   return "showDirectoryPicker" in window;
+}
+
+export async function fetchBundledFirmware() {
+  const response = await fetch(BUNDLED_FIRMWARE_URL);
+  if (!response.ok) throw new Error(`Couldn't load the bundled firmware (HTTP ${response.status}).`);
+  const blob = await response.blob();
+  return new File([blob], BUNDLED_FIRMWARE_NAME, { type: "application/octet-stream" });
 }
 
 // Returns { name } of the picked firmware file's info, or throws if the

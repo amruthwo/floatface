@@ -43,22 +43,27 @@
 
       <section class="screen" id="screen-flash">
         <h2>Flash your dongle</h2>
-        <p>If your dongle is already running the nRF Sniffer firmware (for example, if you set it up using the manual README instructions previously), skip this step.</p>
-        <p>Otherwise: put the dongle in bootloader mode (usually a double-tap of its reset button -- check the dongle's own docs), which makes it show up as a USB drive named <code>UF2BOOT</code>. Then:</p>
-        <ol>
-          <li>Pick the <code>.uf2</code> firmware file on your computer. Don't have one yet? Build or download Nordic's nRF Sniffer firmware per the <a href="https://github.com/amruthwo/floatface/blob/main/README.md">main README</a>'s manual instructions, then come back here.</li>
-          <li>Pick the <code>UF2BOOT</code> drive.</li>
-        </ol>
+        <p>If your dongle is already running the nRF Sniffer firmware (for example, if you set it up previously), skip this step -- nothing here is required twice.</p>
+        <p>Otherwise: put the dongle in bootloader mode (usually a double-tap of its reset button -- check the dongle's own docs), which makes it show up as a USB drive named <code>UF2BOOT</code>.</p>
 
         <div class="actions">
-          <button class="primary" id="pick-firmware-btn">1. Pick .uf2 firmware file</button>
-          <span id="firmware-picked" class="picked-label"></span>
+          <button class="primary pill-lg" id="flash-bundled-btn">Flash the bundled firmware</button>
         </div>
-        <div class="actions">
-          <button class="primary" id="pick-drive-btn" disabled>2. Pick UF2BOOT drive &amp; flash</button>
-        </div>
+        <p class="note">This is Nordic's official nRF Sniffer for Bluetooth LE firmware (v4.1.1), pre-packaged for the Makerdiary nRF52840-MDK dongle -- see <a href="./firmware/NOTICE.md">firmware/NOTICE.md</a> for exact provenance and license. Clicking this will ask you to pick the <code>UF2BOOT</code> drive, then copies the firmware onto it.</p>
 
         <div id="flash-log" class="log" hidden></div>
+
+        <details class="advanced">
+          <summary>Advanced: use a different .uf2 file (other dongles)</summary>
+          <p>For a different nRF52840 board or custom firmware build.</p>
+          <div class="actions">
+            <button class="primary" id="pick-firmware-btn">1. Pick .uf2 firmware file</button>
+            <span id="firmware-picked" class="picked-label"></span>
+          </div>
+          <div class="actions">
+            <button class="primary" id="pick-drive-btn" disabled>2. Pick UF2BOOT drive &amp; flash</button>
+          </div>
+        </details>
 
         <div class="actions">
           <button class="link" data-goto="welcome">&larr; Back</button>
@@ -68,22 +73,43 @@
 
       <section class="screen" id="screen-capture">
         <h2>Capture the handshake</h2>
-        <ol class="capture-steps">
-          <li>Turn off your laptop's own Bluetooth. (Seriously -- this is the single biggest reason captures fail.)</li>
-          <li>Power-cycle your board (off, then on). A fresh power-on seems to make the app re-run the full unlock handshake reliably.</li>
-          <li>Connect to your dongle below, then wait for your board to appear.</li>
-          <li>Tap your board's card, then open the official Onewheel app on your phone and let it connect. Keep the dongle within a few feet of your phone and board -- a weak signal is the second biggest reason captures fail.</li>
-        </ol>
 
-        <div class="actions">
-          <button class="primary" id="connect-btn">Connect to dongle</button>
-          <button class="primary" id="scan-btn" disabled>Scan for boards</button>
-          <button class="link" id="capture-disconnect-btn" disabled>Disconnect</button>
+        <div class="prep-checklist">
+          <label class="prep-item"><input type="checkbox" id="chk-bt-off" /> Laptop Bluetooth is off</label>
+          <label class="prep-item"><input type="checkbox" id="chk-power-cycle" /> Board power-cycled (off, then on)</label>
+          <label class="prep-item"><input type="checkbox" id="chk-close" /> Phone + dongle within a few feet of the board</label>
         </div>
 
-        <div id="device-list" class="device-list"></div>
+        <div class="actions">
+          <button class="primary pill-lg" id="start-btn">Start capture</button>
+          <button class="link" id="capture-reset-btn" hidden>Start over</button>
+        </div>
 
-        <div id="capture-log" class="log"></div>
+        <div class="status-card" id="status-card">
+          <div class="status-icon" id="status-icon">🛹</div>
+          <div class="status-text">
+            <div class="status-headline" id="status-headline">Ready when you are.</div>
+            <div class="status-subtext" id="status-subtext">Check the boxes above, then tap "Start capture."</div>
+          </div>
+        </div>
+
+        <div class="tips" id="capture-tips" hidden>
+          <p><strong>Taking a while?</strong> BLE connections are sometimes flaky -- that's normal, not a bug. A few things that have helped:</p>
+          <ul>
+            <li>Toggle your <strong>phone's</strong> Bluetooth off and back on, then reconnect the Onewheel app.</li>
+            <li>Double-check your laptop's own Bluetooth is really off.</li>
+            <li>Power-cycle the board again and retry.</li>
+            <li>Keep the dongle within a few feet of your phone and board.</li>
+          </ul>
+        </div>
+
+        <details class="advanced">
+          <summary>Technical log</summary>
+          <div id="capture-log" class="log"></div>
+          <div class="actions">
+            <button class="link" id="download-log-btn">Download debug log</button>
+          </div>
+        </details>
 
         <div class="actions">
           <button class="link" data-goto="flash">&larr; Back</button>
