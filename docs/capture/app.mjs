@@ -116,16 +116,6 @@ pickDriveBtn.addEventListener("click", async () => {
 // plain-language status and a way to export the technical log if they need
 // to ask for help.
 
-document.querySelectorAll(".prep-step").forEach((el) => {
-  el.addEventListener("click", () => {
-    el.classList.toggle("done");
-    if (el.classList.contains("done")) {
-      el.classList.add("pop");
-      el.addEventListener("animationend", () => el.classList.remove("pop"), { once: true });
-    }
-  });
-});
-
 const startBtn = document.getElementById("start-btn");
 const resetBtn = document.getElementById("capture-reset-btn");
 const statusIconEl = document.getElementById("status-icon");
@@ -148,7 +138,10 @@ function isOwDevice(name) {
   return bare.toLowerCase().startsWith("ow");
 }
 
-function setStatus(icon, headline, subtext) {
+const statusCardEl = document.getElementById("status-card");
+
+function setStatus(tone, icon, headline, subtext) {
+  statusCardEl.className = `status-card tone-${tone}`;
   statusIconEl.textContent = icon;
   statusHeadlineEl.textContent = headline;
   statusSubtextEl.textContent = subtext;
@@ -161,10 +154,10 @@ function clearStuckTimer() {
     stuckTimer = null;
   }
 }
-function armStuckTimer(delayMs, icon, headline, subtext) {
+function armStuckTimer(delayMs, tone, icon, headline, subtext) {
   clearStuckTimer();
   stuckTimer = setTimeout(() => {
-    setStatus(icon, headline, subtext);
+    setStatus(tone, icon, headline, subtext);
     tipsEl.hidden = false;
   }, delayMs);
 }
@@ -183,20 +176,20 @@ if (hasSerial) {
       if (followedDevice) return; // already following one -- see note above
       followedDevice = device;
       const bareName = device.name.replace(/^"|"$/g, "");
-      setStatus("\u{1F4F6}", `Found ${bareName}!`, "Open the official Onewheel app on your phone now and let it connect.");
-      armStuckTimer(20000, "\u{1F914}", "Still watching...", "Haven't seen a connection attempt yet. Make sure the Onewheel app is open and trying to connect.");
+      setStatus("found", "\u{1F4F6}", `Found ${bareName}!`, "Open the official Onewheel app on your phone now and let it connect.");
+      armStuckTimer(20000, "stuck", "\u{1F914}", "Still watching...", "Haven't seen a connection attempt yet. Make sure the Onewheel app is open and trying to connect.");
       sniffer.follow(device);
     },
     onConnect: () => {
       captureLog("Connection detected -- watching for the unlock write...");
-      setStatus("\u{1F517}", "Connected! Watching for the unlock signal...", "Keep the Onewheel app open on your phone.");
-      armStuckTimer(15000, "\u{1F914}", "Connected, but no unlock signal yet...", "This is usually quick. See the tips below if it doesn't show up soon.");
+      setStatus("connected", "\u{1F517}", "Connected! Watching for the unlock signal...", "Keep the Onewheel app open on your phone.");
+      armStuckTimer(15000, "stuck", "\u{1F914}", "Connected, but no unlock signal yet...", "This is usually quick. See the tips below if it doesn't show up soon.");
     },
     onDisconnect: () => {
       captureLog("Connection ended.");
       if (!captureActive) return;
-      setStatus("\u{1F501}", "Connection dropped -- that's normal for BLE.", "Still watching in case your board reconnects. Try reconnecting the Onewheel app if this keeps happening.");
-      armStuckTimer(20000, "\u{1F914}", "Still watching...", "See the tips below for things that help.");
+      setStatus("stuck", "\u{1F501}", "Connection dropped -- that's normal for BLE.", "Still watching in case your board reconnects. Try reconnecting the Onewheel app if this keeps happening.");
+      armStuckTimer(20000, "stuck", "\u{1F914}", "Still watching...", "See the tips below for things that help.");
     },
     onHandshake: ({ opcode, handle, value }) => {
       const opcodeName = opcode === 0x12 ? "Write Request" : "Write Command";
@@ -205,7 +198,7 @@ if (hasSerial) {
         clearStuckTimer();
         captureActive = false;
         capturedHandshake = value;
-        setStatus("✅", "Got it!", "Taking you to your handshake now...");
+        setStatus("success", "✅", "Got it!", "Taking you to your handshake now...");
         showHandshake(value);
         setTimeout(() => showScreen("export"), 600);
       }
@@ -225,15 +218,15 @@ async function startCapture() {
   startBtn.disabled = true;
   resetBtn.hidden = false;
   tipsEl.hidden = true;
-  setStatus("\u{1F50C}", "Connecting to your dongle...", "Your browser will ask you to pick it -- choose \"nRF Sniffer for Bluetooth LE\" and click Connect.");
+  setStatus("progress", "\u{1F50C}", "Connecting to your dongle...", "Your browser will ask you to pick it -- choose \"nRF Sniffer for Bluetooth LE\" and click Connect.");
   try {
     await sniffer.connect();
-    setStatus("\u{1F50D}", "Looking for your board...", "Make sure it's powered on and nearby.");
+    setStatus("progress", "\u{1F50D}", "Looking for your board...", "Make sure it's powered on and nearby.");
     await sniffer.scan();
-    armStuckTimer(15000, "\u{1F914}", "Still looking...", "Make sure your board is powered on and the dongle is within a few feet of it.");
+    armStuckTimer(15000, "stuck", "\u{1F914}", "Still looking...", "Make sure your board is powered on and the dongle is within a few feet of it.");
   } catch (e) {
     if (e.name !== "NotFoundError") {
-      setStatus("⚠️", "Couldn't connect to the dongle.", e.message);
+      setStatus("error", "⚠️", "Couldn't connect to the dongle.", e.message);
     }
     endCapture();
   }
@@ -253,7 +246,7 @@ resetBtn.addEventListener("click", async () => {
   tipsEl.hidden = true;
   await sniffer.disconnect();
   captureLog("Disconnected from dongle.");
-  setStatus("\u{1F44B}", "Ready when you are.", "Tap \"Start capture\" whenever you're set.");
+  setStatus("idle", "\u{1F44B}", "Ready when you are.", "Tap \"Start capture\" whenever you're set.");
 });
 
 downloadLogBtn.addEventListener("click", () => {

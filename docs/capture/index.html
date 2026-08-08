@@ -16,10 +16,10 @@
     </header>
 
     <nav class="steps" id="steps">
-      <button class="step" data-screen="welcome">1. Welcome</button>
-      <button class="step" data-screen="flash">2. Flash dongle</button>
-      <button class="step" data-screen="capture">3. Capture</button>
-      <button class="step" data-screen="export">4. Export</button>
+      <button class="step" data-screen="welcome"><span class="step-num">1</span><span class="step-label">Welcome</span></button>
+      <button class="step" data-screen="flash"><span class="step-num">2</span><span class="step-label">Flash</span></button>
+      <button class="step" data-screen="capture"><span class="step-num">3</span><span class="step-label">Capture</span></button>
+      <button class="step" data-screen="export"><span class="step-num">4</span><span class="step-label">Export</span></button>
     </nav>
 
     <main>
@@ -83,23 +83,19 @@
       <section class="screen" id="screen-capture">
         <h2>Capture the handshake</h2>
 
-        <p class="note">Tap each one once you've done it:</p>
         <div class="prep-steps">
-          <button type="button" class="prep-step" data-step="bt">
+          <div class="prep-step">
             <span class="prep-emoji">📴</span>
             <span class="prep-label">Laptop Bluetooth off</span>
-            <span class="prep-check">✓</span>
-          </button>
-          <button type="button" class="prep-step" data-step="power">
+          </div>
+          <div class="prep-step">
             <span class="prep-emoji">🔁</span>
             <span class="prep-label">Board power-cycled</span>
-            <span class="prep-check">✓</span>
-          </button>
-          <button type="button" class="prep-step" data-step="close">
+          </div>
+          <div class="prep-step">
             <span class="prep-emoji">📏</span>
-            <span class="prep-label">Phone + dongle nearby</span>
-            <span class="prep-check">✓</span>
-          </button>
+            <span class="prep-label">Board, phone &amp; dongle all nearby</span>
+          </div>
         </div>
 
         <div class="actions">
@@ -115,7 +111,7 @@
           <div class="flow-step"><span class="flow-emoji">📱</span><span>Then open the Onewheel app on your phone</span></div>
         </div>
 
-        <div class="status-card" id="status-card">
+        <div class="status-card tone-idle" id="status-card">
           <div class="status-icon" id="status-icon">👋</div>
           <div class="status-text">
             <div class="status-headline" id="status-headline">Ready when you are.</div>
