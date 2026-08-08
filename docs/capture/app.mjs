@@ -125,12 +125,34 @@ const tipsEl = document.getElementById("capture-tips");
 const captureLogEl = document.getElementById("capture-log");
 const downloadLogBtn = document.getElementById("download-log-btn");
 
-let captureLogText = "";
+// Rewriting the whole log into the DOM on every single call was a real
+// bottleneck on long sessions -- a session that runs for several minutes
+// during repeated capture attempts can produce thousands of log lines
+// (mostly harmless PING_RESP/"still advertising" noise), and re-rendering
+// the full accumulated string that many times gets quadratically more
+// expensive as it grows. Coalesce with requestAnimationFrame instead (many
+// captureLog() calls within the same frame become one DOM write), use an
+// array instead of string concatenation, and cap total size so an
+// unusually long session can't grow it without bound.
+const captureLogDetailsEl = captureLogEl.closest("details");
+const MAX_LOG_LINES = 5000;
+let captureLogLines = [];
+let logRenderScheduled = false;
+
 function captureLog(msg) {
   const time = new Date().toLocaleTimeString();
-  captureLogText += `${time}  ${msg}\n`;
-  captureLogEl.textContent = captureLogText;
-  captureLogEl.scrollTop = captureLogEl.scrollHeight;
+  captureLogLines.push(`${time}  ${msg}`);
+  if (captureLogLines.length > MAX_LOG_LINES) captureLogLines.shift();
+  if (!logRenderScheduled) {
+    logRenderScheduled = true;
+    requestAnimationFrame(renderCaptureLog);
+  }
+}
+
+function renderCaptureLog() {
+  logRenderScheduled = false;
+  captureLogEl.textContent = captureLogLines.join("\n") + "\n";
+  if (captureLogDetailsEl.open) captureLogEl.scrollTop = captureLogEl.scrollHeight;
 }
 
 function isOwDevice(name) {
@@ -251,7 +273,8 @@ resetBtn.addEventListener("click", async () => {
 });
 
 downloadLogBtn.addEventListener("click", () => {
-  const blob = new Blob([captureLogText || "(empty -- nothing captured yet)\n"], { type: "text/plain" });
+  const text = captureLogLines.length ? captureLogLines.join("\n") + "\n" : "(empty -- nothing captured yet)\n";
+  const blob = new Blob([text], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
