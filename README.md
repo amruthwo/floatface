@@ -47,54 +47,29 @@ for what's confirmed vs. assumed.
 ## Status
 
 Early and personal. This is a from-scratch reverse-engineering project, not
-a polished product — expect rough edges, and see the "Not yet calibrated"
-list below and [PROTOCOL.md](PROTOCOL.md) for everything still uncertain.
-
-**Confirmed against real rides:**
-- Speed/trip distance (RPM-based, using GT's published 11.5" tire diameter)
-  has stayed within ~2-3% of GPS-measured distance across three real rides
-  (e.g. 7.42 mi estimated vs. 7.23 mi GPS) — close enough to trust as an
-  estimate.
-- `life_odometer` is a plain whole-mile count on GT — raw `20` matched the
-  official Onewheel app's own displayed lifetime odometer (20mi), and was
-  later watched climbing live in step with a ride's GPS distance too.
-- `trip_amp_hours`/`trip_regen_amp_hours` are populated with real,
-  live-updating data during a ride (unlike `battery_voltage`/`amperage`/
-  `cell_voltages`, which read back empty) — exact unit not yet confirmed.
-
-**Not yet calibrated / confirmed:**
-- `safety_headroom`'s real meaning is unknown — it read "1" through three
-  entire normal rides, so whatever we originally guessed ("safety warning")
-  is probably wrong. Not shown on-screen until its meaning is known, though
-  it's still recorded to the FIT file.
-- `riding_mode`'s name mapping (Bay/Roam/Flow/Highline/Elevated/Apex) is
-  confirmed for GT; other models/firmware may differ.
-- `trip_odometer` not yet cross-checked against a known distance.
-
-**Investigated, deliberately not implemented:**
-- Switching riding modes (Bay/Roam/Flow/Highline/Elevated/Apex) from the
-  watch. Three separate BLE tests couldn't confirm that writing the mode
-  alone actually changes the board's ride dynamics rather than just its
-  displayed name — the characteristic we hoped would prove it turned out to
-  be an unrelated live value that drifts on its own, mode or no mode. Rather
-  than guess at a safety-relevant BLE write, this isn't implemented. Full
-  writeup in [PROTOCOL.md](PROTOCOL.md#ride-mode-switching-investigated-not-implemented-safety).
+a polished product — expect rough edges. Speed/distance and the lifetime
+odometer have checked out well against GPS and the official app across
+several real rides; a couple of values (`safety_headroom`, exact trip
+amp-hour units) are recorded but not yet fully understood. Riding-mode
+*switching* from the watch was investigated and deliberately left out —
+the evidence couldn't confirm it actually changes ride dynamics rather than
+just a displayed name, and this isn't the kind of thing to guess at. See
+[PROTOCOL.md](PROTOCOL.md) for the full evidence behind all of this.
 
 ## Why no phone is needed
 
 Connect IQ has supported direct Bluetooth Low Energy access from the watch
 since API level 3.1 — the watch can scan, pair, and talk to arbitrary BLE
-peripherals on its own. The hard part isn't the watch side, it's the
-Onewheel side: GT-generation boards require an "unlock" write before they'll
-report live telemetry, and that unlock value turns out to be computed
-**server-side by FutureMotion**, tied to your account — not a fixed
-algorithm we can bake into the app. See [PROTOCOL.md](PROTOCOL.md) for the
-full investigation (including a detour through decompiling FutureMotion's
-Android app) that led to that conclusion.
+peripherals on its own. The catch is on the Onewheel side: GT-generation
+boards require an "unlock" write before they'll report live telemetry, and
+that unlock value is computed **server-side by FutureMotion**, tied to your
+account — not a fixed algorithm we can bake into the app. See
+[PROTOCOL.md](PROTOCOL.md) for the full investigation behind that
+conclusion.
 
 Practically, that means **you need to capture your own board's unlock
-bytes once**, the same way we did. It's a one-time setup step, not
-something the app can do for you automatically.
+bytes once** — a one-time setup step, not something the app can do for
+you automatically.
 
 ## The watch and the official Onewheel app can't both be connected at once
 
@@ -103,16 +78,9 @@ works. Onewheel boards only support **one BLE connection at a time**. We
 confirmed this directly: with a phone connected via the official app, the
 board stops advertising entirely, so nothing else (our watch, a laptop, a
 different phone) can even see it, let alone connect. Whoever connects first
-holds the only slot until they disconnect.
-
-There's no way to work around this from the outside — a BLE peripheral's
-connection limit is set by its own firmware, not something a client (phone
-or watch) can override. Two theoretical fixes exist, and neither is a good
-idea: Connect IQ has no API for a watch to act as a BLE *peripheral*, so it
-can't pretend to be the board and relay data to the phone; and doing the
-reverse (a custom Android app on the phone relaying to the watch) would
-mean writing and maintaining a whole separate phone app, reintroducing
-exactly the phone dependency this project exists to avoid.
+holds the only slot until they disconnect, and there's no way to work
+around this from the outside — that limit is set by the board's own
+firmware.
 
 **In practice**: use one or the other. Turn off your phone's Bluetooth (or
 background/force-quit the Onewheel app) before opening Floatface, and
@@ -126,23 +94,21 @@ You need this before the app will do anything beyond scan for your board.
 It works by watching FutureMotion's own official Onewheel app unlock your
 board over Bluetooth, and copying the bytes it sends.
 
-### Easiest: the in-browser capture tool (Makerdiary dongle, confirmed working)
+### Option A: the in-browser capture tool (easiest, confirmed working)
 
-If you have (or are willing to get) a **Makerdiary nRF52840-MDK USB Dongle**,
-**[the in-browser capture tool](https://amruthwo.github.io/floatface/capture/)**
-(requires GitHub Pages to be enabled for this repo, serving from `/docs`)
-walks you through flashing it and capturing the handshake, entirely in
-Chrome/Edge/Brave — no Python, no Wireshark, nothing installed. It's a
-browser-based version of "Option B" below (same underlying protocol, same
-[nRF Sniffer for Bluetooth LE](https://www.nordicsemi.com/Products/Development-tools/nRF-Sniffer-for-Bluetooth-LE)
-firmware), confirmed against real hardware to capture the exact same bytes.
-Everything runs locally in your browser via the Web Serial and File System
-Access APIs — nothing is uploaded anywhere.
+**[The in-browser capture tool](https://amruthwo.github.io/floatface/capture/)**
+walks you through flashing a **Makerdiary nRF52840-MDK USB Dongle** (~$15)
+and capturing the handshake, entirely in Chrome/Edge/Chromium — no Python,
+no Wireshark, nothing to install. Everything runs locally in your browser
+via the Web Serial and File System Access APIs; nothing is uploaded
+anywhere. This is the same underlying method as Option C below, just
+guided and browser-based — confirmed against real hardware to capture the
+exact same bytes.
 
-Using a different nRF52840 dongle, or a Flipper Zero? The tool is built
-specifically around the Makerdiary dongle; use Option A or B below instead.
+Using a different nRF52840 dongle or a Flipper Zero? Use Option C instead;
+the in-browser tool is built specifically around the Makerdiary dongle.
 
-### Option A: Android phone + adb (confirmed working)
+### Option B: Android phone + adb (confirmed working)
 
 1. On your phone: **Settings → About phone**, tap "Build number" 7 times to
    enable Developer Options.
@@ -178,44 +144,37 @@ specifically around the Makerdiary dongle; use Option A or B below instead.
 9. Copy `garmin-app/source/LocalConfig.mc.example` to
    `garmin-app/source/LocalConfig.mc` and paste your bytes in.
 
-### Option B: external BLE sniffer dongle (confirmed working)
+### Option C: external BLE sniffer dongle, manual Wireshark (confirmed working)
 
-A standalone BLE radio sniffer — e.g. a Nordic nRF52840 USB dongle (~$15)
-flashed with Nordic's free "nRF Sniffer for Bluetooth LE" firmware — can
-passively capture the same handshake over the air, directly between your
-phone and the board, without touching the phone's OS at all. This works
-regardless of phone OS (including iOS, which has no accessible equivalent
-to Android's HCI snoop log), since it's listening to radio waves, not
-reading phone logs. **Confirmed against real hardware**: the captured
-unlock bytes matched an Option A (`adb bugreport`) capture of the same
-board byte-for-byte.
+The same method Option A automates, done by hand — useful for a different
+nRF52840 dongle, a Flipper Zero, or just wanting to see the raw capture
+yourself. A BLE sniffer dongle passively captures the handshake over the
+air, directly between your phone and the board, without touching the
+phone's OS at all — so it works regardless of phone OS, including iOS.
+**Confirmed against real hardware**: captured bytes matched an Option B
+(`adb bugreport`) capture of the same board byte-for-byte.
 
-1. Get an nRF52840-based USB sniffer dongle. Exact flashing steps vary by
-   bootloader — a genuine Nordic PCA10059 uses Nordic DFU, but cheaper
-   third-party dongles (e.g. Makerdiary) often ship Adafruit's UF2
-   bootloader instead, which needs a different flashing path (drag the
-   firmware, converted to `.uf2`, onto the dongle's `UF2BOOT` USB drive).
-   Check what your dongle actually is before following generic Nordic
-   instructions.
+1. Get an nRF52840-based USB sniffer dongle and flash it with Nordic's free
+   "nRF Sniffer for Bluetooth LE" firmware. Flashing steps vary by
+   bootloader — a genuine Nordic PCA10059 uses Nordic DFU, while cheaper
+   third-party dongles (e.g. Makerdiary) often use Adafruit's UF2 bootloader
+   instead (drag the firmware, converted to `.uf2`, onto the dongle's
+   `UF2BOOT` USB drive). Check what your dongle actually is first.
 2. Install [`nrfutil`](https://www.nordicsemi.com/Products/Development-tools/nrf-util)
    and its `ble-sniffer` bundle, then `nrfutil ble-sniffer bootstrap` to
    register it as a Wireshark extcap interface.
 3. Open Wireshark, select the `nRF Sniffer for Bluetooth LE` interface.
-4. **The most important step, easy to miss**: enable
-   **View → Interface Toolbars → nRF Sniffer for Bluetooth LE**. It defaults
-   to "All advertising devices" (promiscuous mode), which only ever catches
-   the initial `CONNECT_IND` and then goes back to scanning everyone else's
-   traffic. Use the toolbar's **Device** dropdown to select your board
-   specifically (it'll advertise as `ow` + digits) so the sniffer locks onto
-   and follows that one connection instead.
+4. **Easy to miss but important**: enable **View → Interface Toolbars →
+   nRF Sniffer for Bluetooth LE**, then use its **Device** dropdown to
+   select your board specifically (advertises as `ow` + digits). It
+   defaults to "all advertising devices," which only ever catches the
+   initial `CONNECT_IND` before going back to scanning everyone else.
 5. Start the capture, then open the official Onewheel app on your phone and
-   let it connect normally — this performs the real unlock, same as Option A.
-6. In Wireshark, look for a `Write Request` to handle matching
-   `uart_serial_write` (`e659f3ff-...`) carrying a 20-byte value — same
-   target shape as Option A, just captured over the air.
+   let it connect normally — this performs the real unlock.
+6. Look for a `Write Request` to handle matching `uart_serial_write`
+   (`e659f3ff-...`) carrying a 20-byte value.
 7. Copy `garmin-app/source/LocalConfig.mc.example` to
-   `garmin-app/source/LocalConfig.mc` and paste your bytes in, same as
-   Option A.
+   `garmin-app/source/LocalConfig.mc` and paste your bytes in.
 
 ## Building and installing
 
@@ -242,9 +201,11 @@ board byte-for-byte.
 ## Project layout
 
 ```
-garmin-app/           Connect IQ (Monkey C) watch-app source
+garmin-app/            Connect IQ (Monkey C) watch-app source
 tools/ow_spike/        Python BLE spike scripts used to reverse-engineer
                        and validate the protocol before writing Monkey C
+docs/capture/          The in-browser unlock-handshake capture tool
+                       (Option A above)
 PROTOCOL.md            Everything confirmed (and still open) about the
                        Onewheel BLE protocol
 docs/boards/           What's known/unknown per Onewheel model (only GT is
