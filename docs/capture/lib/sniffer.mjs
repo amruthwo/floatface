@@ -14,6 +14,13 @@ import { AttWriteWatcher } from "./att.mjs";
 
 const BAUD_RATE = 1000000;
 
+// Nordic's own USB vendor/product ID for the nRF Sniffer for Bluetooth LE
+// firmware (confirmed via `lsusb`: "1915:522a Nordic Semiconductor ASA nRF
+// Sniffer for Bluetooth LE") -- passed to requestPort() so the browser's
+// port picker only lists the dongle, not every other paired serial/
+// Bluetooth device on the system.
+const NORDIC_SNIFFER_USB_FILTER = { usbVendorId: 0x1915, usbProductId: 0x522a };
+
 export const STATE_IDLE = "idle";
 export const STATE_SCANNING = "scanning";
 export const STATE_FOLLOWING = "following";
@@ -63,7 +70,7 @@ export class WebSerialSniffer {
   }
 
   async connect() {
-    this._port = await navigator.serial.requestPort();
+    this._port = await navigator.serial.requestPort({ filters: [NORDIC_SNIFFER_USB_FILTER] });
     await this._port.open({ baudRate: BAUD_RATE, flowControl: "hardware" });
     this._writer = this._port.writable.getWriter();
     this._readLoopPromise = this._readLoop();

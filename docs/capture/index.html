@@ -44,24 +44,33 @@
       <section class="screen" id="screen-flash">
         <h2>Flash your dongle</h2>
         <p>If your dongle is already running the nRF Sniffer firmware (for example, if you set it up previously), skip this step -- nothing here is required twice.</p>
-        <p>Otherwise: put the dongle in bootloader mode (usually a double-tap of its reset button -- check the dongle's own docs), which makes it show up as a USB drive named <code>UF2BOOT</code>.</p>
+
+        <div class="flow-diagram">
+          <div class="flow-step"><span class="flow-emoji">👇</span><span>Hold the dongle's button down</span></div>
+          <div class="flow-arrow">&rarr;</div>
+          <div class="flow-step"><span class="flow-emoji">🔌</span><span>Plug it in, then let go</span></div>
+          <div class="flow-arrow">&rarr;</div>
+          <div class="flow-step"><span class="flow-emoji">💾</span><span>A "UF2BOOT" drive appears</span></div>
+        </div>
+        <p class="note">This puts the dongle into its <strong>bootloader</strong> -- a tiny built-in program (separate from the sniffer firmware) whose only job is accepting new firmware. To your computer, that bootloader looks exactly like a USB flash drive named <code>UF2BOOT</code>; that's normal, not a different mode. Copying the firmware file onto it is a real flash, not just a file copy that sits there -- the bootloader watches for the new file, programs it directly into the chip, and reboots into it automatically.</p>
 
         <div class="actions">
-          <button class="primary pill-lg" id="flash-bundled-btn">Flash the bundled firmware</button>
+          <button class="primary pill-lg" id="flash-bundled-btn">Select your dongle's UF2BOOT drive</button>
         </div>
-        <p class="note">This is Nordic's official nRF Sniffer for Bluetooth LE firmware (v4.1.1), pre-packaged for the Makerdiary nRF52840-MDK dongle -- see <a href="./firmware/NOTICE.md">firmware/NOTICE.md</a> for exact provenance and license. Clicking this will ask you to pick the <code>UF2BOOT</code> drive, then copies the firmware onto it.</p>
+        <p class="note">This is Nordic's official nRF Sniffer for Bluetooth LE firmware (v4.1.1), pre-packaged for the Makerdiary nRF52840-MDK dongle -- see <a href="./firmware/NOTICE.md">firmware/NOTICE.md</a> for exact provenance and license.</p>
 
         <div id="flash-log" class="log" hidden></div>
 
         <details class="advanced">
           <summary>Advanced: use a different .uf2 file (other dongles)</summary>
-          <p>For a different nRF52840 board or custom firmware build.</p>
+          <p>This only works for boards with a <strong>UF2 bootloader</strong> like this one (the "shows up as a USB drive" style). A genuine Nordic dev kit using Nordic's own DFU bootloader (e.g. a PCA10059) needs different tooling entirely -- see the <a href="https://github.com/amruthwo/floatface/blob/main/README.md">main README</a>'s manual instructions for that path.</p>
+          <p>Need firmware for a different UF2-bootloader nRF52840 board? Get it from Nordic directly: <a href="https://www.nordicsemi.com/Products/Development-tools/nRF-Sniffer-for-Bluetooth-LE">nRF Sniffer for Bluetooth LE</a> (you'll need to convert their <code>.hex</code> to <code>.uf2</code> yourself -- see the main README).</p>
           <div class="actions">
             <button class="primary" id="pick-firmware-btn">1. Pick .uf2 firmware file</button>
             <span id="firmware-picked" class="picked-label"></span>
           </div>
           <div class="actions">
-            <button class="primary" id="pick-drive-btn" disabled>2. Pick UF2BOOT drive &amp; flash</button>
+            <button class="primary" id="pick-drive-btn" disabled>2. Select UF2BOOT drive &amp; flash</button>
           </div>
         </details>
 
@@ -74,10 +83,23 @@
       <section class="screen" id="screen-capture">
         <h2>Capture the handshake</h2>
 
-        <div class="prep-checklist">
-          <label class="prep-item"><input type="checkbox" id="chk-bt-off" /> Laptop Bluetooth is off</label>
-          <label class="prep-item"><input type="checkbox" id="chk-power-cycle" /> Board power-cycled (off, then on)</label>
-          <label class="prep-item"><input type="checkbox" id="chk-close" /> Phone + dongle within a few feet of the board</label>
+        <p class="note">Tap each one once you've done it:</p>
+        <div class="prep-steps">
+          <button type="button" class="prep-step" data-step="bt">
+            <span class="prep-emoji">📴</span>
+            <span class="prep-label">Laptop Bluetooth off</span>
+            <span class="prep-check">✓</span>
+          </button>
+          <button type="button" class="prep-step" data-step="power">
+            <span class="prep-emoji">🔁</span>
+            <span class="prep-label">Board power-cycled</span>
+            <span class="prep-check">✓</span>
+          </button>
+          <button type="button" class="prep-step" data-step="close">
+            <span class="prep-emoji">📏</span>
+            <span class="prep-label">Phone + dongle nearby</span>
+            <span class="prep-check">✓</span>
+          </button>
         </div>
 
         <div class="actions">
@@ -85,11 +107,19 @@
           <button class="link" id="capture-reset-btn" hidden>Start over</button>
         </div>
 
+        <div class="flow-diagram">
+          <div class="flow-step"><span class="flow-emoji">🖱️</span><span>Your browser will ask you to pick a device</span></div>
+          <div class="flow-arrow">&rarr;</div>
+          <div class="flow-step"><span class="flow-emoji">✅</span><span>Choose "nRF Sniffer for Bluetooth LE"</span></div>
+          <div class="flow-arrow">&rarr;</div>
+          <div class="flow-step"><span class="flow-emoji">📱</span><span>Then open the Onewheel app on your phone</span></div>
+        </div>
+
         <div class="status-card" id="status-card">
-          <div class="status-icon" id="status-icon">🛹</div>
+          <div class="status-icon" id="status-icon">👋</div>
           <div class="status-text">
             <div class="status-headline" id="status-headline">Ready when you are.</div>
-            <div class="status-subtext" id="status-subtext">Check the boxes above, then tap "Start capture."</div>
+            <div class="status-subtext" id="status-subtext">Tap "Start capture" whenever you're set.</div>
           </div>
         </div>
 

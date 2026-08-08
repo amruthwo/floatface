@@ -116,6 +116,16 @@ pickDriveBtn.addEventListener("click", async () => {
 // plain-language status and a way to export the technical log if they need
 // to ask for help.
 
+document.querySelectorAll(".prep-step").forEach((el) => {
+  el.addEventListener("click", () => {
+    el.classList.toggle("done");
+    if (el.classList.contains("done")) {
+      el.classList.add("pop");
+      el.addEventListener("animationend", () => el.classList.remove("pop"), { once: true });
+    }
+  });
+});
+
 const startBtn = document.getElementById("start-btn");
 const resetBtn = document.getElementById("capture-reset-btn");
 const statusIconEl = document.getElementById("status-icon");
@@ -215,7 +225,7 @@ async function startCapture() {
   startBtn.disabled = true;
   resetBtn.hidden = false;
   tipsEl.hidden = true;
-  setStatus("\u{1F50C}", "Connecting to your dongle...", "Pick it from the browser's port list if you're prompted.");
+  setStatus("\u{1F50C}", "Connecting to your dongle...", "Your browser will ask you to pick it -- choose \"nRF Sniffer for Bluetooth LE\" and click Connect.");
   try {
     await sniffer.connect();
     setStatus("\u{1F50D}", "Looking for your board...", "Make sure it's powered on and nearby.");
@@ -243,7 +253,7 @@ resetBtn.addEventListener("click", async () => {
   tipsEl.hidden = true;
   await sniffer.disconnect();
   captureLog("Disconnected from dongle.");
-  setStatus("\u{1F6F9}", "Ready when you are.", "Check the boxes above, then tap \"Start capture.\"");
+  setStatus("\u{1F44B}", "Ready when you are.", "Tap \"Start capture\" whenever you're set.");
 });
 
 downloadLogBtn.addEventListener("click", () => {
