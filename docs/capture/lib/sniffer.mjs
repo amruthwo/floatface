@@ -39,6 +39,7 @@ export class WebSerialSniffer {
     this.state = STATE_IDLE;
     this.inConnection = false;
     this.devices = new DeviceList();
+    this._followedDevice = null;
 
     this._port = null;
     this._reader = null;
@@ -117,6 +118,7 @@ export class WebSerialSniffer {
 
   async scan() {
     this.devices.clear();
+    this._followedDevice = null;
     this.state = STATE_SCANNING;
     await this._send(buildScanRequest(this._packetCounter));
     // Matches SnifferCollector._startScanning, which also resets the TK --
@@ -127,6 +129,7 @@ export class WebSerialSniffer {
 
   async follow(device) {
     this.state = STATE_FOLLOWING;
+    this._followedDevice = device;
     this._attWatcher.reset();
     this._throttleState.clear();
     await this._send(buildFollowRequest(this._packetCounter, device.address));
@@ -142,7 +145,14 @@ export class WebSerialSniffer {
 
     if (packet.id === T.EVENT_PACKET_ADV_PDU) {
       this._handleAdvPacket(packet);
-      if (this.state === STATE_FOLLOWING && packet.OK && packet.blePacket) {
+      // The dongle keeps relaying ADV_PDU sightings for *any* nearby BLE
+      // device while following, not just the target -- without this check,
+      // a followed board that's gone quiet (e.g. because it's already
+      // connected to your phone, which is exactly what following is
+      // waiting to see) gets misreported as "still advertising" using
+      // someone else's headphones or smart device as evidence.
+      const isFollowedDevice = this.state === STATE_FOLLOWING && packet.OK && packet.blePacket?.advAddress && this._followedDevice && addressToString(packet.blePacket.advAddress) === this._followedDevice.addressString;
+      if (isFollowedDevice) {
         if (packet.blePacket.advType === 5) this.onLog("Saw a CONNECT_REQ for this device -- it should be connecting now.");
         else this._throttledLog("still-advertising", "Still seeing this board advertise (not connected yet)...");
       }
