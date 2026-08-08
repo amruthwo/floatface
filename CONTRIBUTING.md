@@ -50,9 +50,13 @@ Two possibilities, and you don't know which applies until you try:
    it's a significant finding.
 2. **If that doesn't work**, your board is likely on firmware ≥4141 like GT,
    meaning the unlock is server/account-gated. Follow the same capture
-   procedure GT needed -- see the main README's
-   "Capturing your board's unlock bytes" section (Android + adb, or the
-   untested BLE sniffer dongle option).
+   procedure GT needed -- see the main README's "Capturing your board's
+   unlock bytes" section. Easiest is Option A, the
+   [in-browser capture tool](https://amruthwo.github.io/floatface/capture/)
+   (no Python, no Wireshark, confirmed working against real hardware) if
+   you have or can get the Makerdiary dongle it's built around; Options B
+   (Android + adb) and C (manual BLE sniffer + Wireshark) work with
+   whatever you already have.
 
 Either way, report which path worked for your board's firmware revision --
 that's the data point `docs/boards/<model>.md` needs.
