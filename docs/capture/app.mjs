@@ -198,6 +198,7 @@ if (hasSerial) {
         clearStuckTimer();
         captureActive = false;
         capturedHandshake = value;
+        saveHandshake(value);
         setStatus("success", "✅", "Got it!", "Taking you to your handshake now...");
         showHandshake(value);
         setTimeout(() => showScreen("export"), 600);
@@ -260,14 +261,47 @@ downloadLogBtn.addEventListener("click", () => {
 });
 
 // ---- Export screen ----
+//
+// The captured handshake is saved to sessionStorage (not localStorage --
+// this is sensitive per-board secret data, so it should disappear when the
+// tab closes, not linger indefinitely) so an accidental refresh right after
+// a hard-won capture doesn't throw it away. A real capture happened in a
+// user's debug log where this exact loss looked likely: the handshake was
+// there in the technical log, but they'd refreshed the page since and had
+// no way to know it had actually worked.
+
+const HANDSHAKE_STORAGE_KEY = "floatface-capture-handshake-hex";
+
+function saveHandshake(bytes) {
+  sessionStorage.setItem(HANDSHAKE_STORAGE_KEY, toHex(bytes).replace(/ /g, ""));
+}
+
+function loadSavedHandshake() {
+  const hex = sessionStorage.getItem(HANDSHAKE_STORAGE_KEY);
+  if (!hex) return null;
+  const bytes = [];
+  for (let i = 0; i < hex.length; i += 2) bytes.push(parseInt(hex.slice(i, i + 2), 16));
+  return bytes;
+}
+
+function clearSavedHandshake() {
+  sessionStorage.removeItem(HANDSHAKE_STORAGE_KEY);
+}
 
 const handshakeHexEl = document.getElementById("handshake-hex");
 const copyHexBtn = document.getElementById("copy-hex-btn");
 const downloadBtn = document.getElementById("download-btn");
+const recaptureBtn = document.getElementById("recapture-btn");
 
 function showHandshake(bytes) {
   handshakeHexEl.textContent = toHex(bytes);
 }
+
+recaptureBtn.addEventListener("click", () => {
+  clearSavedHandshake();
+  capturedHandshake = null;
+  showScreen("capture");
+});
 
 copyHexBtn.addEventListener("click", async () => {
   if (!capturedHandshake) return;
@@ -302,8 +336,11 @@ ${lines.join(",\n")}
   URL.revokeObjectURL(url);
 });
 
-if (!hasFsAccess) {
-  // Flashing is unavailable, but capture (Web Serial only) still might work.
+const savedHandshake = loadSavedHandshake();
+if (savedHandshake) {
+  capturedHandshake = savedHandshake;
+  showHandshake(savedHandshake);
+  showScreen("export");
+} else {
+  showScreen("welcome");
 }
-
-showScreen("welcome");

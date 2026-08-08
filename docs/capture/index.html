@@ -29,6 +29,7 @@
           <li>A <strong>Makerdiary nRF52840-MDK USB Dongle</strong> running Nordic's nRF Sniffer for Bluetooth LE firmware. Using a different nRF52840 dongle or a Flipper Zero? The <a href="https://github.com/amruthwo/floatface/blob/main/README.md">main README</a>'s manual instructions still work for you -- this tool is built around the Makerdiary dongle specifically.</li>
           <li>Your phone, with the official Onewheel app installed and able to connect to your board.</li>
           <li>Chrome, Edge, or another Chromium-based browser on a laptop or desktop. <strong>Not</strong> Firefox or Safari -- they don't support the Web Serial/File System Access APIs this tool depends on, and there's no workaround for that. Brave works for Capture, but disables the File System Access API by default, so the Flash step won't work there (confirmed on Brave 1.92) -- use Chrome/Edge/Chromium if you need Flash too.</li>
+          <li>A little patience: catching the handshake often takes <strong>several tries</strong> (5+ isn't unusual). That's a real limitation of this class of BLE sniffer hardware, not a sign anything's wrong -- more on this on the Capture screen.</li>
         </ul>
 
         <div id="support-check" class="callout"></div>
@@ -103,6 +104,8 @@
           <button class="link" id="capture-reset-btn" hidden>Start over</button>
         </div>
 
+        <p class="note">💡 Heads up: this often takes <strong>several tries</strong> (5+ isn't unusual) before it catches the handshake -- the sniffer has to catch your phone's connection at the exact right moment and then not lose sync, and it misses one or both fairly often. That's a real limitation of this class of BLE sniffer, not a sign your setup is broken. Some attempts won't even show a "CONNECT_REQ" line at all -- also normal, just try again.</p>
+
         <div class="flow-diagram">
           <div class="flow-step"><span class="flow-emoji">🖱️</span><span>Your browser will ask you to pick a device</span></div>
           <div class="flow-arrow">&rarr;</div>
@@ -120,7 +123,7 @@
         </div>
 
         <div class="tips" id="capture-tips" hidden>
-          <p><strong>Taking a while?</strong> BLE connections are sometimes flaky -- that's normal, not a bug. A few things that have helped:</p>
+          <p><strong>Taking a while?</strong> That's expected -- 5+ tries isn't unusual with this kind of sniffer, not a sign something's broken. A few things that have helped:</p>
           <ul>
             <li>Toggle your <strong>phone's</strong> Bluetooth off and back on, then reconnect the Onewheel app.</li>
             <li>Double-check your laptop's own Bluetooth is really off.</li>
@@ -155,7 +158,7 @@
         <p class="note">Drop the downloaded file into <code>garmin-app/source/LocalConfig.mc</code> in your Floatface checkout (it replaces the placeholder from <code>LocalConfig.mc.example</code>), then build and sideload as usual. This value is specific to your board -- see <a href="https://github.com/amruthwo/floatface/blob/main/PROTOCOL.md">PROTOCOL.md</a> for why it can't be shared or reused on a different board.</p>
 
         <div class="actions">
-          <button class="link" data-goto="capture">Capture another board</button>
+          <button class="link" id="recapture-btn">Capture another board</button>
         </div>
       </section>
     </main>
