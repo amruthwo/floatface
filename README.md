@@ -154,15 +154,32 @@ phone's OS at all — so it works regardless of phone OS, including iOS.
 **Confirmed against real hardware**: captured bytes matched an Option B
 (`adb bugreport`) capture of the same board byte-for-byte.
 
-1. Get an nRF52840-based USB sniffer dongle and flash it with Nordic's free
-   "nRF Sniffer for Bluetooth LE" firmware. Flashing steps vary by
-   bootloader — a genuine Nordic PCA10059 uses Nordic DFU, while cheaper
-   third-party dongles (e.g. Makerdiary) often use Adafruit's UF2 bootloader
-   instead (drag the firmware, converted to `.uf2`, onto the dongle's
-   `UF2BOOT` USB drive). Check what your dongle actually is first.
-2. Install [`nrfutil`](https://www.nordicsemi.com/Products/Development-tools/nrf-util)
-   and its `ble-sniffer` bundle, then `nrfutil ble-sniffer bootstrap` to
-   register it as a Wireshark extcap interface.
+1. Install [`nrfutil`](https://www.nordicsemi.com/Products/Development-tools/nrf-util)
+   and its `ble-sniffer` bundle (`nrfutil install ble-sniffer`), which
+   downloads Nordic's free "nRF Sniffer for Bluetooth LE" firmware as
+   `.hex` files under `~/.nrfutil/share/nrfutil-ble-sniffer/firmware/` —
+   pick the one matching your dongle's chip (e.g.
+   `sniffer_nrf52840dk_nrf52840_4.1.1.hex` for any nRF52840-based dongle).
+   Then run `nrfutil ble-sniffer bootstrap` to register it as a Wireshark
+   extcap interface.
+2. Get your dongle into bootloader mode and flash it — this varies by
+   bootloader, so check what your dongle actually is first:
+   - A genuine Nordic PCA10059 uses Nordic's own DFU bootloader — follow
+     Nordic's DFU flashing docs for that `.hex` file directly.
+   - Cheaper third-party dongles (e.g. Makerdiary) often ship Adafruit's
+     UF2 bootloader instead, which mounts as a USB drive named `UF2BOOT`
+     and can't take the raw `.hex` — convert it first with Microsoft's
+     [`uf2conv.py`](https://github.com/microsoft/uf2):
+     ```bash
+     git clone https://github.com/microsoft/uf2
+     python3 uf2/utils/uf2conv.py sniffer_nrf52840dk_nrf52840_4.1.1.hex \
+       --convert --family 0x2886F00F --output sniffer.uf2
+     ```
+     `0x2886F00F` is the UF2 family ID confirmed working for a Makerdiary
+     nRF52840-MDK; other UF2-bootloader boards may use a different one,
+     usually printed in `INFO_UF2.TXT` on the mounted `UF2BOOT` drive.
+     Copy the resulting `sniffer.uf2` onto that drive — the bootloader
+     flashes it and reboots on its own.
 3. Open Wireshark, select the `nRF Sniffer for Bluetooth LE` interface.
 4. **Easy to miss but important**: enable **View → Interface Toolbars →
    nRF Sniffer for Bluetooth LE**, then use its **Device** dropdown to
