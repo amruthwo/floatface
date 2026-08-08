@@ -25,8 +25,24 @@ export const STATE_IDLE = "idle";
 export const STATE_SCANNING = "scanning";
 export const STATE_FOLLOWING = "following";
 
+// If the dongle firmware locks onto a connection attempt that then dies,
+// it can apparently get wedged -- unlike earlier failed attempts in the
+// same session, it stops relaying anything about the followed device at
+// all (no more advertising sightings, no data), while completely unrelated
+// background traffic (PING_RESP) keeps arriving perfectly normally. Real
+// debug logs showed 3+ minutes of total silence on the followed device
+// with the phone's Bluetooth confirmed off the whole time -- the board had
+// nothing else to do but keep advertising, so this can only be the dongle,
+// not real silence. Detected here as a threshold, not auto-recovered: an
+// earlier, blind "periodically re-issue follow()" approach was tried in
+// this project's Python spike and made things *worse*, so surfacing this
+// clearly (and letting the user decide to restart) is the safer fix until
+// there's real evidence a specific recovery action actually helps.
+const STUCK_THRESHOLD_MS = 20000;
+const STUCK_CHECK_INTERVAL_MS = 5000;
+
 export class WebSerialSniffer {
-  constructor({ onLog = () => {}, onDevice = () => {}, onConnect = () => {}, onDisconnect = () => {}, onHandshake = () => {} } = {}) {
+  constructor({ onLog = () => {}, onDevice = () => {}, onConnect = () => {}, onDisconnect = () => {}, onHandshake = () => {}, onStuck = () => {} } = {}) {
     if (!("serial" in navigator)) {
       throw new Error("Web Serial isn't available -- use Chrome, Edge, or another Chromium browser.");
     }
@@ -35,11 +51,15 @@ export class WebSerialSniffer {
     this.onConnect = onConnect;
     this.onDisconnect = onDisconnect;
     this.onHandshake = onHandshake;
+    this.onStuck = onStuck;
 
     this.state = STATE_IDLE;
     this.inConnection = false;
     this.devices = new DeviceList();
     this._followedDevice = null;
+    this._lastActivityTime = null;
+    this._stuckNotified = false;
+    this._stuckCheckTimer = null;
 
     this._port = null;
     this._reader = null;
@@ -79,6 +99,7 @@ export class WebSerialSniffer {
   }
 
   async disconnect() {
+    this._stopStuckWatchdog();
     if (this._reader) {
       await this._reader.cancel().catch(() => {});
     }
@@ -92,6 +113,30 @@ export class WebSerialSniffer {
       this._port = null;
     }
     this.state = STATE_IDLE;
+  }
+
+  _startStuckWatchdog() {
+    this._stopStuckWatchdog();
+    this._lastActivityTime = performance.now();
+    this._stuckNotified = false;
+    this._stuckCheckTimer = setInterval(() => {
+      if (performance.now() - this._lastActivityTime > STUCK_THRESHOLD_MS && !this._stuckNotified) {
+        this._stuckNotified = true;
+        this.onStuck();
+      }
+    }, STUCK_CHECK_INTERVAL_MS);
+  }
+
+  _stopStuckWatchdog() {
+    if (this._stuckCheckTimer) {
+      clearInterval(this._stuckCheckTimer);
+      this._stuckCheckTimer = null;
+    }
+  }
+
+  _noteActivity() {
+    this._lastActivityTime = performance.now();
+    this._stuckNotified = false;
   }
 
   async _readLoop() {
@@ -117,6 +162,7 @@ export class WebSerialSniffer {
   }
 
   async scan() {
+    this._stopStuckWatchdog();
     this.devices.clear();
     this._followedDevice = null;
     this.state = STATE_SCANNING;
@@ -134,6 +180,7 @@ export class WebSerialSniffer {
     this._throttleState.clear();
     await this._send(buildFollowRequest(this._packetCounter, device.address));
     this.onLog(`Following ${device.name} @ ${device.addressString}...`);
+    this._startStuckWatchdog();
   }
 
   _handleFrame(frame) {
@@ -153,10 +200,12 @@ export class WebSerialSniffer {
       // someone else's headphones or smart device as evidence.
       const isFollowedDevice = this.state === STATE_FOLLOWING && packet.OK && packet.blePacket?.advAddress && this._followedDevice && addressToString(packet.blePacket.advAddress) === this._followedDevice.addressString;
       if (isFollowedDevice) {
+        this._noteActivity();
         if (packet.blePacket.advType === 5) this.onLog("Saw a CONNECT_REQ for this device -- it should be connecting now.");
         else this._throttledLog("still-advertising", "Still seeing this board advertise (not connected yet)...");
       }
     } else if (packet.id === T.EVENT_PACKET_DATA_PDU) {
+      if (this.state === STATE_FOLLOWING) this._noteActivity();
       if (packet.OK) this._attWatcher.handleDataPacket(packet);
       else this._throttledLog("bad-data-pdu", "Data PDU(s) with a bad CRC/MIC arrived -- connection sync may be shaky.");
     } else if (packet.id === T.EVENT_FOLLOW) {

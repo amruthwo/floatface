@@ -213,6 +213,13 @@ if (hasSerial) {
       setStatus("stuck", "\u{1F501}", "Connection dropped -- that's normal for BLE.", "Still watching in case your board reconnects. Try reconnecting the Onewheel app if this keeps happening.");
       armStuckTimer(20000, "stuck", "\u{1F914}", "Still watching...", "See the tips below for things that help.");
     },
+    onStuck: () => {
+      if (!captureActive) return;
+      captureLog("No sign of this board for 20+ seconds while the dongle should still be watching it -- it may have gotten wedged internally (a known limitation, not something we can fix from here).");
+      clearStuckTimer();
+      setStatus("stuck", "\u{1F6A7}", "The dongle seems stuck.", 'No sign of your board for a while, even though it should still be watching. Click "Start over" below to reset it.');
+      tipsEl.hidden = false;
+    },
     onHandshake: ({ opcode, handle, value }) => {
       const opcodeName = opcode === 0x12 ? "Write Request" : "Write Command";
       captureLog(`ATT ${opcodeName} at handle 0x${handle.toString(16).padStart(4, "0")}, ${value.length} bytes: ${toHex(value)}`);
